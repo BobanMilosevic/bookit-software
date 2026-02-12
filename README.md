@@ -38,9 +38,6 @@ BookIT ist eine PHP-basierte Buchungsplattform für Raumverwaltung. Benutzer kö
 
 ## Logo
 
-Das Logo wird als `logo.png` im Projektordner erwartet. Verwenden Sie Tools wie Canva, LogoMaker oder Hatchful, um ein cooles Logo zu erstellen. Ideen:
-- "BookIT" mit einem Buch-Icon oder stilisiertem "B" und "IT".
-- Farben: Blau (#007bff) für Vertrauen, vielleicht mit Akzenten.
-- Speichern Sie es als PNG mit transparentem Hintergrund.
+Das Logo wird als `logo.png` im Projektordner erwartet.
 
 Wenn kein Logo vorhanden ist, wird der Text "BookIT" angezeigt.
