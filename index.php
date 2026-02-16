@@ -272,7 +272,7 @@
                 </div>
                 <div class="modal-body text-center">
                     <i class="bi bi-check-circle-fill text-success display-1 mb-3"></i>
-                    <p>Der Plan wurde erfolgreich zu Ihrem Warenkorb hinzugefügt.</p>
+                    <p>Ihr Abonnement-Plan wurde erfolgreich ausgewählt!</p>
                 </div>
                 <div class="modal-footer justify-content-center">
                     <a href="cart.php" class="btn btn-primary">Zum Warenkorb</a>
@@ -338,16 +338,35 @@
             }
         }
 
-        function addToCart(plan, price) {
-            const existingItem = cart.find(item => item.plan === plan);
-            if (existingItem) {
-                alert('Dieser Plan ist bereits in Ihrem Warenkorb!');
-                return;
+        function updatePlanButtons() {
+            // Reset all buttons
+            document.querySelectorAll('.add-to-cart').forEach(button => {
+                button.textContent = 'In den Warenkorb';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-primary');
+            });
+
+            // Highlight selected plan
+            if (cart.length > 0) {
+                const selectedPlan = cart[0].plan;
+                const selectedButton = document.querySelector(`.add-to-cart[data-plan="${selectedPlan}"]`);
+                if (selectedButton) {
+                    selectedButton.textContent = 'Ausgewählt';
+                    selectedButton.classList.remove('btn-primary');
+                    selectedButton.classList.add('btn-success');
+                }
             }
+        }
+
+        function addToCart(plan, price) {
+            // Remove any existing plan
+            cart = [];
             
+            // Add new plan
             cart.push({ plan, price: parseFloat(price) });
             localStorage.setItem('bookit_cart', JSON.stringify(cart));
             updateCartBadge();
+            updatePlanButtons();
             
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('cartModal'));
@@ -365,8 +384,9 @@
             });
         });
 
-        // Initialize cart badge on page load
+        // Initialize cart badge and buttons on page load
         updateCartBadge();
+        updatePlanButtons();
 
         // E-Mail validation
         document.addEventListener('DOMContentLoaded', function() {
