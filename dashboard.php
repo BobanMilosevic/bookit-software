@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+<?php
+session_start();
+if (empty($_SESSION['user_id'])) {
+  header("Location: /login.php");
+  exit;
+}
+?>
+
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -39,7 +47,7 @@
                     <li class="nav-item"><a class="nav-link" href="#bookings">Meine Buchungen</a></li>
                     <li class="nav-item"><a class="nav-link" href="#rooms">Räume</a></li>
                     <li class="nav-item"><a class="nav-link" href="#profile">Profil</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Abmelden</a></li>
+                    <li class="nav-item"><a class="nav-link" href="logout.php">Abmelden</a></li>
                 </ul>
             </div>
         </div>

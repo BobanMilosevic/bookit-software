@@ -105,17 +105,18 @@
 
         <div id="alert-container"></div>
 
-        <form id="loginForm">
+        <form id="loginForm" method="post" action="login_process.php">
             <div class="mb-3">
-                <label for="email" class="form-label">E-Mail</label>
-                <input type="email" class="form-control" id="email" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Passwort</label>
-                <input type="password" class="form-control" id="password" required>
-            </div>
+            <label for="email" class="form-label">E-Mail</label>
+        <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Passwort</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+        </div>
             <button type="submit" class="btn btn-primary w-100">Anmelden</button>
         </form>
+
 
         <div class="links">
             <a href="#" onclick="showRegister()">Noch kein Konto? Registrieren</a><br>
@@ -132,25 +133,14 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="registerForm">
-                        <div class="mb-3">
-                            <label for="regName" class="form-label">Vollständiger Name</label>
-                            <input type="text" class="form-control" id="regName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="regEmail" class="form-label">E-Mail</label>
-                            <input type="email" class="form-control" id="regEmail" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="regPassword" class="form-label">Passwort</label>
-                            <input type="password" class="form-control" id="regPassword" required minlength="6">
-                        </div>
-                        <div class="mb-3">
-                            <label for="regConfirmPassword" class="form-label">Passwort bestätigen</label>
-                            <input type="password" class="form-control" id="regConfirmPassword" required minlength="6">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Registrieren</button>
-                    </form>
+                    <form id="registerForm" method="post" action="register_process.php">
+  <input class="form-control" id="regName" name="name" required>
+  <input class="form-control" id="regEmail" name="email" type="email" required>
+  <input class="form-control" id="regPassword" name="password" type="password" required minlength="6">
+  <input class="form-control" id="regConfirmPassword" type="password" required minlength="6">
+  <button type="submit" class="btn btn-primary w-100">Registrieren</button>
+</form>
+
                 </div>
             </div>
         </div>
@@ -202,54 +192,6 @@
             } else {
                 showAlert('Ungültige E-Mail oder Passwort!');
             }
-        });
-
-        // Register Form Handler
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const name = document.getElementById('regName').value;
-            const email = document.getElementById('regEmail').value;
-            const password = document.getElementById('regPassword').value;
-            const confirmPassword = document.getElementById('regConfirmPassword').value;
-
-            // Validierung
-            if (password !== confirmPassword) {
-                showAlert('Passwörter stimmen nicht überein!');
-                return;
-            }
-
-            if (password.length < 6) {
-                showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
-                return;
-            }
-
-            // Prüfe ob E-Mail bereits existiert
-            if (users.find(u => u.email === email)) {
-                showAlert('Diese E-Mail-Adresse ist bereits registriert!');
-                return;
-            }
-
-            // Neuen User erstellen
-            const newUser = {
-                id: Date.now(),
-                name: name,
-                email: email,
-                password: password,
-                createdAt: new Date().toISOString()
-            };
-
-            users.push(newUser);
-            localStorage.setItem('bookit_users', JSON.stringify(users));
-
-            // Modal schließen und Erfolg anzeigen
-            const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
-            modal.hide();
-
-            showAlert('Registrierung erfolgreich! Sie können sich jetzt anmelden.', 'success');
-
-            // Form zurücksetzen
-            document.getElementById('registerForm').reset();
         });
     </script>
 </body>

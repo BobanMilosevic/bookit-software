@@ -1,0 +1,22 @@
+<?php
+require __DIR__ . "/db.php";
+session_start();
+
+$name = trim($_POST['name'] ?? '');
+$email = trim($_POST['email'] ?? '');
+$password = (string)($_POST['password'] ?? '');
+
+if ($name === '' || $email === '' || strlen($password) < 6) {
+  http_response_code(422);
+  exit("Ungültige Eingaben");
+}
+
+$username = strtolower(preg_replace('/\s+/', '.', $name));
+$hash = password_hash($password, PASSWORD_DEFAULT);
+
+$stmt = $pdo->prepare("INSERT INTO `users` (`email`,`password_hash`,`username`) VALUES (?,?,?)");
+$stmt->execute([$email, $hash, $username]);
+
+$_SESSION['user_id'] = (int)$pdo->lastInsertId();
+header("Location: /dashboard.php");
+exit;
