@@ -68,6 +68,7 @@
                     <li class="nav-item"><a class="nav-link" href="#demo">Demo</a></li>
                     <li class="nav-item"><a class="nav-link" href="about.php">About Us</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">Kontakt</a></li>
+                    <li class="nav-item"><a class="nav-link" href="login.php">Login</a></li>
                     <li class="nav-item">
                         <a class="nav-link position-relative" href="cart.php">
                             <i class="bi bi-cart3"></i>
