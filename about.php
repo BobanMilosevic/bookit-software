@@ -64,7 +64,7 @@
 
     <div class="container my-5 fade-in">
         <h2>Über BookIT</h2>
-        <p>BookIT wurde 2023 in Berlin, Deutschland, gegründet. Unser Ziel ist es, Raumverwaltung für Unternehmen und Organisationen zu vereinfachen. Mit einem Team von erfahrenen Entwicklern und UX-Designern bieten wir innovative Lösungen für moderne Arbeitsumgebungen.</p>
+        <p>BookIT wurde 2026 in Berlin, Deutschland, gegründet. Unser Ziel ist es, Raumverwaltung für Unternehmen und Organisationen zu vereinfachen. Mit einem Team von erfahrenen Entwicklern und UX-Designern bieten wir innovative Lösungen für moderne Arbeitsumgebungen.</p>
         <h4>Unser Standort</h4>
         <p>BookIT GmbH<br>Hauptstraße 123<br>10115 Berlin<br>Deutschland</p>
         <p>Telefon: +49 30 12345678<br>E-Mail: info@bookit.com</p>

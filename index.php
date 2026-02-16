@@ -68,6 +68,12 @@
                     <li class="nav-item"><a class="nav-link" href="#demo">Demo</a></li>
                     <li class="nav-item"><a class="nav-link" href="about.php">About Us</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">Kontakt</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="cart.php">
+                            <i class="bi bi-cart3"></i>
+                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="cart-badge" style="display: none;">0</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -143,7 +149,7 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary">Auswählen</button>
+                            <button class="btn btn-primary add-to-cart" data-plan="basic" data-price="9.99">In den Warenkorb</button>
                         </div>
                     </div>
                 </div>
@@ -163,7 +169,7 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary">Auswählen</button>
+                            <button class="btn btn-primary add-to-cart" data-plan="pro" data-price="19.99">In den Warenkorb</button>
                         </div>
                     </div>
                 </div>
@@ -183,7 +189,7 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-success">Auswählen</button>
+                            <button class="btn btn-success add-to-cart" data-plan="enterprise" data-price="49.99">In den Warenkorb</button>
                         </div>
                     </div>
                 </div>
@@ -235,7 +241,10 @@
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">E-Mail</label>
-                        <input type="email" class="form-control" id="email">
+                        <input type="email" class="form-control" id="email" required>
+                        <div id="email-feedback" class="invalid-feedback">
+                            Bitte geben Sie eine gültige E-Mail-Adresse ein.
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="message" class="form-label">Nachricht</label>
@@ -252,6 +261,26 @@
             <p>&copy; 2026 BookIT. Alle Rechte vorbehalten. | <a href="about.php">About Us</a> | <a href="impressum.php">Impressum</a> | <a href="#contact">Kontakt</a></p>
         </div>
     </footer>
+
+    <!-- Modal für Warenkorb-Aktion -->
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cartModalLabel">Artikel hinzugefügt!</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <i class="bi bi-check-circle-fill text-success display-1 mb-3"></i>
+                    <p>Der Plan wurde erfolgreich zu Ihrem Warenkorb hinzugefügt.</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <a href="cart.php" class="btn btn-primary">Zum Warenkorb</a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Weiter einkaufen</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -293,6 +322,96 @@
                     });
                 }
             });
+        });
+
+        // Shopping Cart functionality
+        let cart = JSON.parse(localStorage.getItem('bookit_cart')) || [];
+        const cartBadge = document.getElementById('cart-badge');
+
+        function updateCartBadge() {
+            const totalItems = cart.length;
+            if (totalItems > 0) {
+                cartBadge.textContent = totalItems;
+                cartBadge.style.display = 'inline-block';
+            } else {
+                cartBadge.style.display = 'none';
+            }
+        }
+
+        function addToCart(plan, price) {
+            const existingItem = cart.find(item => item.plan === plan);
+            if (existingItem) {
+                alert('Dieser Plan ist bereits in Ihrem Warenkorb!');
+                return;
+            }
+            
+            cart.push({ plan, price: parseFloat(price) });
+            localStorage.setItem('bookit_cart', JSON.stringify(cart));
+            updateCartBadge();
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('cartModal'));
+            modal.show();
+        }
+
+        // Add event listeners to cart buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.add-to-cart').forEach(button => {
+                button.addEventListener('click', function() {
+                    const plan = this.getAttribute('data-plan');
+                    const price = this.getAttribute('data-price');
+                    addToCart(plan, price);
+                });
+            });
+        });
+
+        // Initialize cart badge on page load
+        updateCartBadge();
+
+        // E-Mail validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const emailInput = document.getElementById('email');
+            const emailFeedback = document.getElementById('email-feedback');
+            const contactForm = document.querySelector('#contact form');
+
+            function validateEmail(email) {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return re.test(email);
+            }
+
+            if (emailInput) {
+                emailInput.addEventListener('input', function() {
+                    if (this.value === '') {
+                        this.classList.remove('is-valid', 'is-invalid');
+                        if (emailFeedback) emailFeedback.style.display = 'none';
+                    } else if (validateEmail(this.value)) {
+                        this.classList.remove('is-invalid');
+                        this.classList.add('is-valid');
+                        if (emailFeedback) emailFeedback.style.display = 'none';
+                    } else {
+                        this.classList.remove('is-valid');
+                        this.classList.add('is-invalid');
+                        if (emailFeedback) emailFeedback.style.display = 'block';
+                    }
+                });
+            }
+
+            if (contactForm) {
+                contactForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    if (!validateEmail(emailInput.value)) {
+                        emailInput.classList.add('is-invalid');
+                        if (emailFeedback) emailFeedback.style.display = 'block';
+                        emailInput.focus();
+                        return false;
+                    }
+                    // Hier könnte man das Formular absenden
+                    alert('Vielen Dank für Ihre Nachricht! Wir melden uns bald bei Ihnen.');
+                    this.reset();
+                    emailInput.classList.remove('is-valid', 'is-invalid');
+                    if (emailFeedback) emailFeedback.style.display = 'none';
+                });
+            }
         });
     </script>
 </body>
