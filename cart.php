@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #6366f1;
-            --secondary-color: #8b5cf6;
-            --accent-color: #06b6d4;
+            --primary-color: #118075;
+            --secondary-color: #4D8496;
+            --accent-color: #80111B;
             --light-bg: #f8fafc;
             --dark-text: #1e293b;
         }
@@ -19,6 +19,7 @@
         .cart-total { background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 1.5rem; margin-top: 2rem; }
         .btn { transition: all 0.3s ease; border-radius: 8px; }
         .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border: none; }
         .empty-cart { text-align: center; padding: 3rem; color: #6b7280; }
         .plan-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; }
         .plan-basic { background: #e5e7eb; color: #374151; }
@@ -63,7 +64,7 @@
         
         <!-- Zusatzservices Section -->
         <div id="additional-services" class="cart-item" style="display: none;">
-            <h4>Zusatzservices</h4>
+            <h4 style="color: var(--primary-color);">Zusatzservices</h4>
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-check">
@@ -71,7 +72,7 @@
                         <label class="form-check-label" for="website-service">
                             <strong>Komplette Website-Erstellung</strong><br>
                             <small class="text-muted">Professionelle Website-Erstellung für Ihr Unternehmen</small><br>
-                            <span class="text-primary">€499 (einmalig)</span>
+                            <span class="price">€499 (einmalig)</span>
                         </label>
                     </div>
                 </div>
@@ -81,7 +82,7 @@
                         <label class="form-check-label" for="hosting-service">
                             <strong>Server-Hosting</strong><br>
                             <small class="text-muted">Professionelles Hosting für Ihre BookIT-Installation</small><br>
-                            <span class="text-primary">€9.99/Monat</span>
+                            <span class="price">€9.99/Monat</span>
                         </label>
                     </div>
                 </div>

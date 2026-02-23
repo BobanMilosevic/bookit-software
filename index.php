@@ -8,14 +8,16 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #6366f1;
-            --secondary-color: #8b5cf6;
-            --accent-color: #06b6d4;
+            --primary-color: #118075;
+            --secondary-color: #4D8496;
+            --accent-color: #80111B;
             --light-bg: #f8fafc;
             --dark-text: #1e293b;
         }
         body { font-family: 'Inter', sans-serif; background: var(--light-bg); color: var(--dark-text); overflow-x: hidden; }
         .hero { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 120px 0; text-align: center; position: relative; overflow: hidden; transform: translateZ(0); }
+        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.3); z-index: 1; }
+        .hero > * { position: relative; z-index: 2; }
         .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat; opacity: 0.1; animation: float 20s ease-in-out infinite; }
         .hero h1 { font-size: 4rem; font-weight: 700; margin-bottom: 1rem; animation: slideInFromTop 1s ease-out; }
         .hero p { font-size: 1.5rem; opacity: 0.9; animation: slideInFromBottom 1s ease-out 0.5s both; }
@@ -29,11 +31,13 @@
         .btn:hover::before { left: 100%; }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border: none; }
-        .pricing-card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; margin: 1rem 0; opacity: 0; transform: translateY(50px); transition: all 0.6s ease; }
-        .pricing-card.visible { opacity: 1; transform: translateY(0); }
-        .pricing-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .pricing-card h5 { color: white; font-weight: 700; }
         .pricing-card.popular { border: 2px solid var(--primary-color); position: relative; }
         .pricing-card.popular::before { content: 'Beliebt'; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--primary-color); color: white; padding: 0.25rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; animation: pulse 2s infinite; }
+        .product-card { margin: 20px 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: none; padding: 0; opacity: 0; transform: translateY(50px); transition: all 0.6s ease; }
+        .product-card.visible { opacity: 1; transform: translateY(0); }
+        .product-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .product-card.popular { border: 2px solid var(--secondary-color); position: relative; }
         footer { background: var(--dark-text); color: white; padding: 3rem 0; text-align: center; margin-top: 5rem; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeInUp 0.8s ease-out; }
@@ -87,8 +91,8 @@
             <div class="shape"></div>
         </div>
         <div class="container">
-            <div style="background: rgba(255,255,255,0.9); padding: 20px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
-                <img src="logo.png" alt="BookIT Logo" style="max-width: 300px; display: block; margin: 0 auto;">
+            <div style="padding: 20px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
+                <img src="logo.png" alt="BookIT Logo" style="max-width: 300px; display: block; margin: 0 auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.5));">
             </div>
             <h1>Raumverwaltung leicht gemacht</h1>
             <p class="lead">Entdecken Sie unsere Buchungssoftware für effiziente Raumverwaltung.</p>
@@ -137,9 +141,9 @@
             <div class="row">
                 <div class="col-md-4">
                     <div class="card h-100 pricing-card">
-                        <div class="card-header text-center bg-primary text-white">
+                        <div class="card-header text-center text-white" style="background-color: var(--primary-color);">
                             <h4>Basic</h4>
-                            <h5>€9.99/Monat</h5>
+                            <h5>€49/Monat</h5>
                         </div>
                         <div class="card-body">
                             <ul class="list-unstyled">
@@ -150,15 +154,15 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="basic" data-price="9.99">In den Warenkorb</button>
+                            <button class="btn btn-primary add-to-cart" data-plan="basic" data-price="49">In den Warenkorb</button>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 pricing-card popular">
-                        <div class="card-header text-center bg-primary text-white">
+                        <div class="card-header text-center text-white" style="background-color: var(--primary-color);">
                             <h4>Pro</h4>
-                            <h5>€19.99/Monat</h5>
+                            <h5>€199/Monat</h5>
                         </div>
                         <div class="card-body">
                             <ul class="list-unstyled">
@@ -170,15 +174,15 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="pro" data-price="19.99">In den Warenkorb</button>
+                            <button class="btn btn-primary add-to-cart" data-plan="pro" data-price="199">In den Warenkorb</button>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 pricing-card">
-                        <div class="card-header text-center bg-success text-white">
+                        <div class="card-header text-center text-white" style="background-color: var(--primary-color);">
                             <h4>Enterprise</h4>
-                            <h5>€49.99/Monat</h5>
+                            <h5>€299/Monat</h5>
                         </div>
                         <div class="card-body">
                             <ul class="list-unstyled">
@@ -190,7 +194,7 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-success add-to-cart" data-plan="enterprise" data-price="49.99">In den Warenkorb</button>
+                            <button class="btn btn-success add-to-cart" data-plan="enterprise" data-price="299">In den Warenkorb</button>
                         </div>
                     </div>
                 </div>
@@ -198,7 +202,122 @@
             <div class="text-center mt-4">
                 <p><strong>Zusatzoptionen:</strong></p>
                 <p>✓ Komplette Website-Erstellung auf Anfrage: +€499 (einmalig)</p>
-                <p>✓ Server-Hosting: +€9.99/Monat (oder bringen Sie Ihren eigenen Server mit: Mindestens 2GB RAM, 20GB SSD, PHP 8+, MySQL)</p>
+                <p>✓ Server-Hosting: +€9.99/Monat (oder bringen Sie Ihren eigenen Server mit: Mindestens 4GB RAM, 20GB SSD, PHP 8+, MySQL)</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="additional-products" class="py-5 bg-light fade-in">
+        <div class="container">
+            <h2 class="text-center mb-5">Zusätzliche Produkte</h2>
+            
+            <h3 class="text-center mb-4" style="color: var(--primary-color);">Hardware-Anforderungen</h3>
+            <div class="row mb-5">
+                <div class="col-md-4">
+                    <div class="card h-100 product-card">
+                        <div class="card-header text-center text-white" style="background-color: var(--secondary-color);">
+                            <h5>Mindestanforderungen</h5>
+                            <h6>€299</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li>✓ Prozessor: ≥ 2 CPU-Kerne</li>
+                                <li>✓ Arbeitsspeicher: ≥ 4 GB RAM</li>
+                                <li>✓ Festplattenspeicher: ≥ 20 GB</li>
+                                <li>✓ Basis-Server-Setup</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary add-to-cart" data-plan="hardware-basic" data-price="299">In den Warenkorb</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 product-card popular">
+                        <div class="card-header text-center text-white" style="background-color: var(--secondary-color);">
+                            <h5>Empfohlene Anforderungen</h5>
+                            <h6>€499</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li>✓ Prozessor: ≥ 4 CPU-Kerne</li>
+                                <li>✓ Arbeitsspeicher: ≥ 8 GB RAM</li>
+                                <li>✓ Festplattenspeicher: ≥ 50 GB</li>
+                                <li>✓ Erweiterte Server-Leistung</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary add-to-cart" data-plan="hardware-recommended" data-price="499">In den Warenkorb</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 product-card">
+                        <div class="card-header text-center text-white" style="background-color: var(--secondary-color);">
+                            <h5>Premium Anforderungen</h5>
+                            <h6>€799</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li>✓ Prozessor: ≥ 8 CPU-Kerne</li>
+                                <li>✓ Arbeitsspeicher: ≥ 16 GB RAM</li>
+                                <li>✓ Festplattenspeicher: ≥ 100 GB</li>
+                                <li>✓ Hochleistungs-Server</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary add-to-cart" data-plan="hardware-premium" data-price="799">In den Warenkorb</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 class="text-center mb-4" style="color: var(--primary-color);">BookIT Merchandise</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card h-100 product-card">
+                        <div class="card-header text-center text-white" style="background-color: var(--accent-color);">
+                            <h5>T-Shirt</h5>
+                            <h6>€19.99</h6>
+                        </div>
+                        <div class="card-body text-center">
+                            <i class="bi bi-shirt" style="font-size: 3rem; color: var(--primary-color);"></i>
+                            <p class="card-text">Offizielles BookIT T-Shirt in verschiedenen Größen.</p>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary add-to-cart" data-plan="merch-tshirt" data-price="19.99">In den Warenkorb</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 product-card">
+                        <div class="card-header text-center text-white" style="background-color: var(--accent-color);">
+                            <h5>Kappe</h5>
+                            <h6>€14.99</h6>
+                        </div>
+                        <div class="card-body text-center">
+                            <p class="card-text">Stylische BookIT Kappe für den Alltag.</p>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary add-to-cart" data-plan="merch-cap" data-price="14.99">In den Warenkorb</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 product-card">
+                        <div class="card-header text-center text-white" style="background-color: var(--accent-color);">
+                            <h5>Rucksack</h5>
+                            <h6>€24.99</h6>
+                        </div>
+                        <div class="card-body text-center">
+                            <i class="bi bi-backpack" style="font-size: 3rem; color: var(--primary-color);"></i>
+                            <p class="card-text">Praktischer BookIT Rucksack für unterwegs.</p>
+                        </div>
+                        <div class="card-footer text-center">
+                            <button class="btn btn-primary add-to-cart" data-plan="merch-backpack" data-price="24.99">In den Warenkorb</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -300,7 +419,7 @@
         }, observerOptions);
 
         // Observe elements
-        document.querySelectorAll('.feature-card, .pricing-card').forEach(card => {
+        document.querySelectorAll('.feature-card, .pricing-card, .product-card').forEach(card => {
             observer.observe(card);
         });
 
@@ -309,6 +428,11 @@
             const scrolled = window.pageYOffset;
             const hero = document.querySelector('.hero');
             hero.style.transform = `translateY(${scrolled * 0.5}px)`;
+            
+            // Blur effect on scroll - starts after 200px scroll
+            const blurStart = 200;
+            const blurAmount = scrolled > blurStart ? Math.min((scrolled - blurStart) * 0.02, 5) : 0;
+            hero.style.filter = `blur(${blurAmount}px)`;
         });
 
         // Smooth scrolling for nav links
