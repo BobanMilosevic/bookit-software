@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/auth/require_login.php'; ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -49,7 +50,7 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h1>Willkommen zurück, <span id="userName">User</span>!</h1>
+                    <h1>Willkommen zurück, <?= htmlspecialchars(explode(' ', $_SESSION['user_name'])[0]) ?>!</h1>
                     <p>Verwalten Sie Ihre Raumreservierungen und Einstellungen.</p>
                 </div>
                 <div class="col-md-4 text-end">
