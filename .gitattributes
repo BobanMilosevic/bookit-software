@@ -1,0 +1,5 @@
+# Exclude generated files from language statistics
+composer.lock linguist-generated=true
+
+# Mark vendor directories as vendored (if they exist)
+vendor/** linguist-vendored
