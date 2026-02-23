@@ -71,6 +71,7 @@
                     <li class="nav-item"><a class="nav-link" href="#pricing">Preise</a></li>
                     <li class="nav-item"><a class="nav-link" href="#demo">Demo</a></li>
                     <li class="nav-item"><a class="nav-link" href="about.php">About Us</a></li>
+                    <li class="nav-item"><a class="nav-link" href="customer-news.php">News</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">Kontakt</a></li>
                     <li class="nav-item"><a class="nav-link" href="login.php">Login</a></li>
                     <li class="nav-item">
@@ -432,7 +433,12 @@
             // Blur effect on scroll - starts after 200px scroll
             const blurStart = 200;
             const blurAmount = scrolled > blurStart ? Math.min((scrolled - blurStart) * 0.02, 5) : 0;
-            hero.style.filter = `blur(${blurAmount}px)`;
+            
+            // Darken effect on scroll instead of opacity
+            const darkenStart = 300;
+            const darkenAmount = scrolled > darkenStart ? Math.min((scrolled - darkenStart) * 0.005, 0.7) : 0;
+            
+            hero.style.filter = `blur(${blurAmount}px) brightness(${1 - darkenAmount})`;
         });
 
         // Smooth scrolling for nav links
