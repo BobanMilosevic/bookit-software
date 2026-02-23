@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
             --light-bg: #f8fafc;
             --dark-text: #1e293b;
         }
+
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
@@ -22,6 +24,7 @@
             align-items: center;
             justify-content: center;
         }
+
         .login-container {
             background: white;
             border-radius: 16px;
@@ -30,38 +33,46 @@
             width: 100%;
             max-width: 400px;
         }
+
         .logo {
             text-align: center;
             margin-bottom: 2rem;
         }
+
         .logo img {
             height: 60px;
             margin-bottom: 1rem;
         }
+
         .logo h2 {
             color: var(--primary-color);
             font-weight: 700;
             margin: 0;
         }
+
         .form-control:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
         }
+
         .btn-primary {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             border: none;
             padding: 0.75rem 2rem;
             font-weight: 600;
         }
+
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
+
         .divider {
             text-align: center;
             margin: 1.5rem 0;
             position: relative;
         }
+
         .divider::before {
             content: '';
             position: absolute;
@@ -71,30 +82,36 @@
             height: 1px;
             background: #e5e7eb;
         }
+
         .divider span {
             background: white;
             padding: 0 1rem;
             color: #6b7280;
             font-size: 0.875rem;
         }
+
         .links {
             text-align: center;
             margin-top: 1.5rem;
         }
+
         .links a {
             color: var(--primary-color);
             text-decoration: none;
             font-size: 0.875rem;
         }
+
         .links a:hover {
             text-decoration: underline;
         }
+
         .alert {
             border-radius: 8px;
             border: none;
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="logo">
@@ -186,29 +203,29 @@
         }
 
         // Login Form Handler
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            // Finde User
-            const user = users.find(u => u.email === email && u.password === password);
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('password', password);
 
-            if (user) {
-                currentUser = user;
-                localStorage.setItem('bookit_current_user', JSON.stringify(user));
+            const res = await fetch('auth/login.php', { method: 'POST', body: formData });
+            const data = await res.json().catch(() => null);
+
+            if (res.ok && data?.ok) {
                 showAlert('Erfolgreich angemeldet! Weiterleitung...', 'success');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.php';
-                }, 1000);
+                setTimeout(() => window.location.href = 'dashboard.php', 600);
             } else {
-                showAlert('Ungültige E-Mail oder Passwort!');
+                showAlert(data?.error || 'Login fehlgeschlagen.');
             }
         });
 
         // Register Form Handler
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
+        document.getElementById('registerForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
             const name = document.getElementById('regName').value;
@@ -217,11 +234,26 @@
             const confirmPassword = document.getElementById('regConfirmPassword').value;
             const role = document.getElementById('regRole').value;
 
-            // Validierung
-            if (password !== confirmPassword) {
-                showAlert('Passwörter stimmen nicht überein!');
-                return;
+            if (password !== confirmPassword) return showAlert('Passwörter stimmen nicht überein!');
+            if (password.length < 6) return showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('email', email);
+            formData.append('password', password);
+
+            const res = await fetch('auth/register.php', { method: 'POST', body: formData });
+            const data = await res.json().catch(() => null);
+
+            if (res.ok && data?.ok) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+                modal.hide();
+                showAlert('Registrierung erfolgreich! Sie können sich jetzt anmelden.', 'success');
+                document.getElementById('registerForm').reset();
+            } else {
+                showAlert(data?.error || 'Registrierung fehlgeschlagen.');
             }
+<<<<<<< HEAD
 
             if (password.length < 6) {
                 showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
@@ -255,7 +287,10 @@
 
             // Form zurücksetzen
             document.getElementById('registerForm').reset();
+=======
+>>>>>>> 8ba8cc517de1ad604c9aa207754d5db6f14d17cb
         });
     </script>
 </body>
+
 </html>
