@@ -146,8 +146,11 @@
                             <input type="password" class="form-control" id="regPassword" required minlength="6">
                         </div>
                         <div class="mb-3">
-                            <label for="regConfirmPassword" class="form-label">Passwort bestätigen</label>
-                            <input type="password" class="form-control" id="regConfirmPassword" required minlength="6">
+                            <label for="regRole" class="form-label">Rolle</label>
+                            <select class="form-control" id="regRole" required>
+                                <option value="customer">Kunde</option>
+                                <option value="employee">Mitarbeiter</option>
+                            </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Registrieren</button>
                     </form>
@@ -212,6 +215,7 @@
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regConfirmPassword').value;
+            const role = document.getElementById('regRole').value;
 
             // Validierung
             if (password !== confirmPassword) {
@@ -236,6 +240,7 @@
                 name: name,
                 email: email,
                 password: password,
+                role: role,
                 createdAt: new Date().toISOString()
             };
 
