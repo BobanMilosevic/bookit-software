@@ -163,8 +163,11 @@
                             <input type="password" class="form-control" id="regPassword" required minlength="6">
                         </div>
                         <div class="mb-3">
-                            <label for="regConfirmPassword" class="form-label">Passwort bestätigen</label>
-                            <input type="password" class="form-control" id="regConfirmPassword" required minlength="6">
+                            <label for="regRole" class="form-label">Rolle</label>
+                            <select class="form-control" id="regRole" required>
+                                <option value="customer">Kunde</option>
+                                <option value="employee">Mitarbeiter</option>
+                            </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Registrieren</button>
                     </form>
@@ -229,6 +232,7 @@
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regConfirmPassword').value;
+            const role = document.getElementById('regRole').value;
 
             if (password !== confirmPassword) return showAlert('Passwörter stimmen nicht überein!');
             if (password.length < 6) return showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
@@ -249,6 +253,42 @@
             } else {
                 showAlert(data?.error || 'Registrierung fehlgeschlagen.');
             }
+<<<<<<< HEAD
+
+            if (password.length < 6) {
+                showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
+                return;
+            }
+
+            // Prüfe ob E-Mail bereits existiert
+            if (users.find(u => u.email === email)) {
+                showAlert('Diese E-Mail-Adresse ist bereits registriert!');
+                return;
+            }
+
+            // Neuen User erstellen
+            const newUser = {
+                id: Date.now(),
+                name: name,
+                email: email,
+                password: password,
+                role: role,
+                createdAt: new Date().toISOString()
+            };
+
+            users.push(newUser);
+            localStorage.setItem('bookit_users', JSON.stringify(users));
+
+            // Modal schließen und Erfolg anzeigen
+            const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+            modal.hide();
+
+            showAlert('Registrierung erfolgreich! Sie können sich jetzt anmelden.', 'success');
+
+            // Form zurücksetzen
+            document.getElementById('registerForm').reset();
+=======
+>>>>>>> 8ba8cc517de1ad604c9aa207754d5db6f14d17cb
         });
     </script>
 </body>

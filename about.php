@@ -55,8 +55,8 @@
 
     <section class="hero">
         <div class="container">
-            <div style="background: rgba(255,255,255,0.9); padding: 20px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
-                <img src="logo.png" alt="BookIT Logo" style="max-width: 250px; display: block; margin: 0 auto;">
+            <div style="padding: 20px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
+                <img src="logo.png" alt="BookIT Logo" style="max-width: 250px; display: block; margin: 0 auto; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));">
             </div>
             <h1>About Us</h1>
         </div>

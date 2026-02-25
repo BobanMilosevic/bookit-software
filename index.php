@@ -57,7 +57,6 @@
 </head>
 <body>
     <?php require __DIR__ . '/partials/navbar.php'; ?>
-
     <section class="hero parallax">
         <div class="floating-shapes">
             <div class="shape"></div>
@@ -406,7 +405,12 @@
             // Blur effect on scroll - starts after 200px scroll
             const blurStart = 200;
             const blurAmount = scrolled > blurStart ? Math.min((scrolled - blurStart) * 0.02, 5) : 0;
-            hero.style.filter = `blur(${blurAmount}px)`;
+            
+            // Darken effect on scroll instead of opacity
+            const darkenStart = 300;
+            const darkenAmount = scrolled > darkenStart ? Math.min((scrolled - darkenStart) * 0.005, 0.7) : 0;
+            
+            hero.style.filter = `blur(${blurAmount}px) brightness(${1 - darkenAmount})`;
         });
 
         // Smooth scrolling for nav links
