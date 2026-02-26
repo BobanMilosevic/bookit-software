@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -127,25 +128,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Simuliere eingeloggten Mitarbeiter für Testzwecke (entfernen Sie dies später)
-        if (!localStorage.getItem('bookit_current_user')) {
-            localStorage.setItem('bookit_current_user', JSON.stringify({
-                id: 1, 
-                name: 'Test Mitarbeiter', 
-                email: 'test@company.com', 
-                role: 'employee'
-            }));
-            // Nach dem Setzen neu laden, um die Navigation zu aktualisieren
-            location.reload();
-        }
-
-        // Rollenprüfung vorübergehend deaktiviert für Entwicklung
-        // const currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
+        // Prüfe Benutzerrolle
+        const currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
         
-        // if (!currentUser || currentUser.role !== 'employee') {
-        //     alert('Zugriff verweigert. Nur für Mitarbeiter.');
-        //     window.location.href = 'login.php';
-        // }
+        if (!currentUser) {
+            alert('Sie müssen sich zuerst anmelden.');
+            window.location.href = 'login.php';
+        } else if (currentUser.role !== 'employee') {
+            alert('Zugriff verweigert. Diese Seite ist nur für Mitarbeiter zugänglich.');
+            window.location.href = 'customer-news.php';
+        }
 
         // Intersection Observer for scroll animations
         const observerOptions = {

@@ -1,4 +1,3 @@
-<?php require_once __DIR__ . '/auth/require_login.php'; ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -39,6 +38,10 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="#bookings">Meine Buchungen</a></li>
                     <li class="nav-item"><a class="nav-link" href="#rooms">Räume</a></li>
+                    <li class="nav-item"><a class="nav-link" href="customer-news.php">News</a></li>
+                    <?php if (($_SESSION['user_role'] ?? 'customer') === 'employee'): ?>
+                    <li class="nav-item"><a class="nav-link" href="internal-news.php">Interne News</a></li>
+                    <?php endif; ?>
                     <li class="nav-item"><a class="nav-link" href="#profile">Profil</a></li>
                     <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Abmelden</a></li>
                 </ul>
@@ -50,7 +53,7 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h1>Willkommen zurück, <?= htmlspecialchars(explode(' ', $_SESSION['user_name'])[0]) ?>!</h1>
+                    <h1 id="welcomeMessage">Willkommen zurück!</h1>
                     <p>Verwalten Sie Ihre Raumreservierungen und Einstellungen.</p>
                 </div>
                 <div class="col-md-4 text-end">
@@ -164,6 +167,7 @@
         }
 
         // User Name anzeigen
+        document.getElementById('welcomeMessage').textContent = `Willkommen zurück, ${currentUser.name.split(' ')[0]}!`;
         document.getElementById('userName').textContent = currentUser.name.split(' ')[0];
 
         // Demo-Statistiken
