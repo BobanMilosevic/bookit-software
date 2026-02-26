@@ -163,6 +163,10 @@
                             <input type="password" class="form-control" id="regPassword" required minlength="6">
                         </div>
                         <div class="mb-3">
+                            <label for="regConfirmPassword" class="form-label">Passwort bestätigen</label>
+                            <input type="password" class="form-control" id="regConfirmPassword" required minlength="6">
+                        </div>
+                        <div class="mb-3">
                             <label for="regRole" class="form-label">Rolle</label>
                             <select class="form-control" id="regRole" required>
                                 <option value="customer">Kunde</option>
@@ -182,8 +186,8 @@
         const users = JSON.parse(localStorage.getItem('bookit_users') || '[]');
         let currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
 
-        // Prüfe ob User bereits eingeloggt ist
-        if (currentUser) {
+        // Prüfe ob User bereits eingeloggt ist - nur einmal beim Laden
+        if (currentUser && currentUser.email) {
             window.location.href = 'dashboard.php';
         }
 
@@ -203,29 +207,29 @@
         }
 
         // Login Form Handler
-        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            const formData = new FormData();
-            formData.append('email', email);
-            formData.append('password', password);
+            // Finde User
+            const user = users.find(u => u.email === email && u.password === password);
 
-            const res = await fetch('auth/login.php', { method: 'POST', body: formData });
-            const data = await res.json().catch(() => null);
-
-            if (res.ok && data?.ok) {
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('bookit_current_user', JSON.stringify(user));
                 showAlert('Erfolgreich angemeldet! Weiterleitung...', 'success');
-                setTimeout(() => window.location.href = 'dashboard.php', 600);
+                setTimeout(() => {
+                    window.location.href = 'dashboard.php';
+                }, 1000);
             } else {
-                showAlert(data?.error || 'Login fehlgeschlagen.');
+                showAlert('Ungültige E-Mail oder Passwort!');
             }
         });
 
         // Register Form Handler
-        document.getElementById('registerForm').addEventListener('submit', async function (e) {
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
             const name = document.getElementById('regName').value;
@@ -234,26 +238,11 @@
             const confirmPassword = document.getElementById('regConfirmPassword').value;
             const role = document.getElementById('regRole').value;
 
-            if (password !== confirmPassword) return showAlert('Passwörter stimmen nicht überein!');
-            if (password.length < 6) return showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
-
-            const formData = new FormData();
-            formData.append('name', name);
-            formData.append('email', email);
-            formData.append('password', password);
-
-            const res = await fetch('auth/register.php', { method: 'POST', body: formData });
-            const data = await res.json().catch(() => null);
-
-            if (res.ok && data?.ok) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
-                modal.hide();
-                showAlert('Registrierung erfolgreich! Sie können sich jetzt anmelden.', 'success');
-                document.getElementById('registerForm').reset();
-            } else {
-                showAlert(data?.error || 'Registrierung fehlgeschlagen.');
+            // Validierung
+            if (password !== confirmPassword) {
+                showAlert('Passwörter stimmen nicht überein!');
+                return;
             }
-<<<<<<< HEAD
 
             if (password.length < 6) {
                 showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
@@ -287,8 +276,6 @@
 
             // Form zurücksetzen
             document.getElementById('registerForm').reset();
-=======
->>>>>>> 8ba8cc517de1ad604c9aa207754d5db6f14d17cb
         });
     </script>
 </body>

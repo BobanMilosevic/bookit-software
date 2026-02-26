@@ -21,7 +21,7 @@
         .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat; opacity: 0.1; animation: float 20s ease-in-out infinite; }
         .hero h1 { font-size: 3rem; font-weight: 700; margin-bottom: 1rem; }
         .logo { font-size: 3em; font-weight: bold; margin-bottom: 20px; }
-        .news-card { margin: 20px 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: none; padding: 2rem; opacity: 0; transform: translateY(50px); transition: all 0.6s ease; }
+        .news-card { margin: 20px 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: none; padding: 2rem; transform: translateY(50px); transition: all 0.6s ease; }
         .news-card.visible { opacity: 1; transform: translateY(0); }
         .news-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
         .news-card .card-title { color: var(--primary-color); font-weight: 600; }
@@ -140,6 +140,11 @@
             if (currentUser.role === 'employee') {
                 document.getElementById('internalNewsLink').style.display = 'block';
             }
+        } else {
+            // Benutzer ist nicht eingeloggt
+            document.getElementById('loginLink').style.display = 'block';
+            document.getElementById('logoutLink').style.display = 'none';
+            document.getElementById('internalNewsLink').style.display = 'none';
         }
 
         // Intersection Observer for scroll animations
