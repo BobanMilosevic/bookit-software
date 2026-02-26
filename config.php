@@ -7,7 +7,7 @@ return [
     'host' => 'php.sylyx.xyz',
     'name' => 'bookit_db',
     'user' => 'root',
-    'pass' => 'root',
+    'pass' => 'UTn_rHX7(wLDDA:=',
     'charset' => 'utf8mb4',
   ],
 

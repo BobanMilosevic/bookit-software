@@ -14,6 +14,7 @@
                     <li class="nav-item"><a class="nav-link" href="webshop.php">Webshop</a></li>
                     <li class="nav-item"><a class="nav-link" href="#demo">Demo</a></li>
                     <li class="nav-item"><a class="nav-link" href="about.php">About Us</a></li>
+                    <li class="nav-item"><a class="nav-link" href="internal-news.php">News</a></li>
                     <li class="nav-item"><a class="nav-link" href="#contact">Kontakt</a></li>
                     <li class="nav-item"><a class="nav-link" href="login.php">Login</a></li>
                     <li class="nav-item">
