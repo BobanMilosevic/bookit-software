@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,47 +15,338 @@
             --light-bg: #f8fafc;
             --dark-text: #1e293b;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--light-bg); color: var(--dark-text); overflow-x: hidden; }
-        .hero { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 120px 0; text-align: center; position: relative; overflow: hidden; transform: translateZ(0); }
-        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.3); z-index: 1; }
-        .hero > * { position: relative; z-index: 2; }
-        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat; opacity: 0.1; animation: float 20s ease-in-out infinite; }
-        .hero h1 { font-size: 4rem; font-weight: 700; margin-bottom: 1rem; animation: slideInFromTop 1s ease-out; }
-        .hero p { font-size: 1.5rem; opacity: 0.9; animation: slideInFromBottom 1s ease-out 0.5s both; }
-        .logo { font-size: 3em; font-weight: bold; margin-bottom: 20px; }
-        .feature-card { margin: 20px 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: none; padding: 2rem; opacity: 0; transform: translateY(50px); transition: all 0.6s ease; }
-        .feature-card.visible { opacity: 1; transform: translateY(0); }
-        .feature-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
-        .feature-card i { font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem; animation: bounceIn 1s ease-out; }
-        .btn { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 12px; font-weight: 600; padding: 0.75rem 2rem; position: relative; overflow: hidden; }
-        .btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
-        .btn:hover::before { left: 100%; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border: none; }
-        .pricing-card h5 { color: white; font-weight: 700; }
-        .pricing-card.popular { border: 2px solid var(--primary-color); position: relative; }
-        .pricing-card.popular::before { content: 'Beliebt'; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--primary-color); color: white; padding: 0.25rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; animation: pulse 2s infinite; }
-        .product-card { margin: 20px 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: none; padding: 0; opacity: 0; transform: translateY(50px); transition: all 0.6s ease; }
-        .product-card.visible { opacity: 1; transform: translateY(0); }
-        .product-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
-        .product-card.popular { border: 2px solid var(--secondary-color); position: relative; }
-        footer { background: var(--dark-text); color: white; padding: 3rem 0; text-align: center; margin-top: 5rem; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeInUp 0.8s ease-out; }
-        .section-title { font-size: 2.5rem; font-weight: 700; margin-bottom: 3rem; color: var(--dark-text); }
-        @keyframes slideInFromTop { from { opacity: 0; transform: translateY(-50px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideInFromBottom { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
-        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.05); } 70% { transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .parallax { background-attachment: fixed; background-size: cover; }
-        .floating-shapes { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
-        .shape { position: absolute; background: rgba(255,255,255,0.1); border-radius: 50%; animation: float 10s ease-in-out infinite; }
-        .shape:nth-child(1) { width: 50px; height: 50px; top: 10%; left: 10%; animation-delay: 0s; }
-        .shape:nth-child(2) { width: 30px; height: 30px; top: 20%; right: 10%; animation-delay: 2s; }
-        .shape:nth-child(3) { width: 40px; height: 40px; bottom: 20%; left: 20%; animation-delay: 4s; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--light-bg);
+            color: var(--dark-text);
+            overflow-x: hidden;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 120px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.3);
+            z-index: 1;
+        }
+
+        .hero>* {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
+            opacity: 0.1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            animation: slideInFromTop 1s ease-out;
+        }
+
+        .hero p {
+            font-size: 1.5rem;
+            opacity: 0.9;
+            animation: slideInFromBottom 1s ease-out 0.5s both;
+        }
+
+        .logo {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .feature-card {
+            margin: 20px 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: none;
+            padding: 2rem;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.6s ease;
+        }
+
+        .feature-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .feature-card i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            animation: bounceIn 1s ease-out;
+        }
+
+        .btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+        }
+
+        .pricing-card h5 {
+            color: white;
+            font-weight: 700;
+        }
+
+        .pricing-card.popular {
+            border: 2px solid var(--primary-color);
+            position: relative;
+        }
+
+        .pricing-card.popular::before {
+            content: 'Beliebt';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        .product-card {
+            margin: 20px 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: none;
+            padding: 0;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.6s ease;
+        }
+
+        .product-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .product-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .product-card.popular {
+            border: 2px solid var(--secondary-color);
+            position: relative;
+        }
+
+        footer {
+            background: var(--dark-text);
+            color: white;
+            padding: 3rem 0;
+            text-align: center;
+            margin-top: 5rem;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            color: var(--dark-text);
+        }
+
+        @keyframes slideInFromTop {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInFromBottom {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+
+            70% {
+                transform: scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .parallax {
+            background-attachment: fixed;
+            background-size: cover;
+        }
+
+        .floating-shapes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .shape {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 10s ease-in-out infinite;
+        }
+
+        .shape:nth-child(1) {
+            width: 50px;
+            height: 50px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape:nth-child(2) {
+            width: 30px;
+            height: 30px;
+            top: 20%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .shape:nth-child(3) {
+            width: 40px;
+            height: 40px;
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 4s;
+        }
     </style>
 </head>
+
 <body>
     <?php require __DIR__ . '/partials/navbar.php'; ?>
     <section class="hero parallax">
@@ -65,7 +357,8 @@
         </div>
         <div class="container">
             <div style="padding: 20px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
-                <img src="logo.png" alt="BookIT Logo" style="max-width: 300px; display: block; margin: 0 auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.5));">
+                <img src="logo.png" alt="BookIT Logo"
+                    style="max-width: 300px; display: block; margin: 0 auto; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.5));">
             </div>
             <h1>Raumverwaltung leicht gemacht</h1>
             <p class="lead">Entdecken Sie unsere Buchungssoftware für effiziente Raumverwaltung.</p>
@@ -127,7 +420,8 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="basic" data-price="49">In den Warenkorb</button>
+                            <button class="btn btn-primary add-to-cart" data-plan="basic" data-price="49">In den
+                                Warenkorb</button>
                         </div>
                     </div>
                 </div>
@@ -147,7 +441,8 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="pro" data-price="199">In den Warenkorb</button>
+                            <button class="btn btn-primary add-to-cart" data-plan="pro" data-price="199">In den
+                                Warenkorb</button>
                         </div>
                     </div>
                 </div>
@@ -167,7 +462,8 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-success add-to-cart" data-plan="enterprise" data-price="299">In den Warenkorb</button>
+                            <button class="btn btn-success add-to-cart" data-plan="enterprise" data-price="299">In den
+                                Warenkorb</button>
                         </div>
                     </div>
                 </div>
@@ -175,7 +471,8 @@
             <div class="text-center mt-4">
                 <p><strong>Zusatzoptionen:</strong></p>
                 <p>✓ Komplette Website-Erstellung auf Anfrage: +€499 (einmalig)</p>
-                <p>✓ Server-Hosting: +€9.99/Monat (oder bringen Sie Ihren eigenen Server mit: Mindestens 4GB RAM, 20GB SSD, PHP 8+, MySQL)</p>
+                <p>✓ Server-Hosting: +€9.99/Monat (oder bringen Sie Ihren eigenen Server mit: Mindestens 4GB RAM, 20GB
+                    SSD, PHP 8+, MySQL)</p>
             </div>
         </div>
     </section>
@@ -184,12 +481,13 @@
     <section id="additional-products" class="py-5 bg-light fade-in">
         <div class="container">
             <h2 class="text-center mb-5">Zusätzliche Produkte</h2>
-            
+
             <h3 class="text-center mb-4" style="color: var(--primary-color);">Hardware-Anforderungen</h3>
             <div class="row mb-5">
                 <div class="col-md-4">
                     <div class="card h-100 product-card">
-                        <div class="card-header text-center text-white" style="background-color: var(--secondary-color);">
+                        <div class="card-header text-center text-white"
+                            style="background-color: var(--secondary-color);">
                             <h5>Mindestanforderungen</h5>
                             <h6>€299</h6>
                         </div>
@@ -202,13 +500,19 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
+<<<<<<< HEAD
                             <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
+=======
+                            <button class="btn btn-primary add-to-cart" data-plan="hardware-basic" data-price="299">In
+                                den Warenkorb</button>
+>>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 product-card popular">
-                        <div class="card-header text-center text-white" style="background-color: var(--secondary-color);">
+                        <div class="card-header text-center text-white"
+                            style="background-color: var(--secondary-color);">
                             <h5>Empfohlene Anforderungen</h5>
                             <h6>€499</h6>
                         </div>
@@ -221,13 +525,19 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
+<<<<<<< HEAD
                             <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
+=======
+                            <button class="btn btn-primary add-to-cart" data-plan="hardware-recommended"
+                                data-price="499">In den Warenkorb</button>
+>>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 product-card">
-                        <div class="card-header text-center text-white" style="background-color: var(--secondary-color);">
+                        <div class="card-header text-center text-white"
+                            style="background-color: var(--secondary-color);">
                             <h5>Premium Anforderungen</h5>
                             <h6>€799</h6>
                         </div>
@@ -240,12 +550,17 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
+<<<<<<< HEAD
                             <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
+=======
+                            <button class="btn btn-primary add-to-cart" data-plan="hardware-premium" data-price="799">In
+                                den Warenkorb</button>
+>>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <h3 class="text-center mb-4" style="color: var(--primary-color);">BookIT Merchandise</h3>
             <div class="row">
                 <div class="col-md-4">
@@ -259,7 +574,12 @@
                             <p class="card-text">Offizielles BookIT T-Shirt in verschiedenen Größen.</p>
                         </div>
                         <div class="card-footer text-center">
+<<<<<<< HEAD
                             <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
+=======
+                            <button class="btn btn-primary add-to-cart" data-plan="merch-tshirt" data-price="19.99">In
+                                den Warenkorb</button>
+>>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -273,7 +593,12 @@
                             <p class="card-text">Stylische BookIT Kappe für den Alltag.</p>
                         </div>
                         <div class="card-footer text-center">
+<<<<<<< HEAD
                             <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
+=======
+                            <button class="btn btn-primary add-to-cart" data-plan="merch-cap" data-price="14.99">In den
+                                Warenkorb</button>
+>>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -288,7 +613,12 @@
                             <p class="card-text">Praktischer BookIT Rucksack für unterwegs.</p>
                         </div>
                         <div class="card-footer text-center">
+<<<<<<< HEAD
                             <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
+=======
+                            <button class="btn btn-primary add-to-cart" data-plan="merch-backpack" data-price="24.99">In
+                                den Warenkorb</button>
+>>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -298,13 +628,15 @@
     <!-- Ende zusätzliche Produkte -->
         <div class="container">
             <h2 class="text-center">Demo unseres Produkts</h2>
-            <p class="text-center">Erleben Sie BookIT in Aktion – Buchen Sie einen Raum und checken Sie ein (simuliert).</p>
+            <p class="text-center">Erleben Sie BookIT in Aktion – Buchen Sie einen Raum und checken Sie ein (simuliert).
+            </p>
             <div class="row">
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">Schritt 1: Buchung</h5>
-                            <p class="card-text">Benutzer buchen online einen Raum und erhalten einen Verifizierungscode per E-Mail.</p>
+                            <p class="card-text">Benutzer buchen online einen Raum und erhalten einen Verifizierungscode
+                                per E-Mail.</p>
                             <a href="mock_booking.php" class="btn btn-primary">Demo Buchung</a>
                         </div>
                     </div>
@@ -351,7 +683,8 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 BookIT. Alle Rechte vorbehalten. | <a href="about.php">About Us</a> | <a href="impressum.php">Impressum</a> | <a href="#contact">Kontakt</a></p>
+            <p>&copy; 2026 BookIT. Alle Rechte vorbehalten. | <a href="about.php">About Us</a> | <a
+                    href="impressum.php">Impressum</a> | <a href="#contact">Kontakt</a></p>
         </div>
     </footer>
 
@@ -370,8 +703,13 @@
                 </div>
                 <div class="modal-footer justify-content-center">
                     <a href="cart.php" class="btn btn-primary">Zum Warenkorb</a>
+<<<<<<< HEAD
                     <a href="mock_booking.php" class="btn btn-outline-primary">Demo buchen</a>
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Schließen</button>
+=======
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Weiter
+                        einkaufen</button>
+>>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                 </div>
             </div>
         </div>
@@ -403,15 +741,15 @@
             const scrolled = window.pageYOffset;
             const hero = document.querySelector('.hero');
             hero.style.transform = `translateY(${scrolled * 0.5}px)`;
-            
+
             // Blur effect on scroll - starts after 200px scroll
             const blurStart = 200;
             const blurAmount = scrolled > blurStart ? Math.min((scrolled - blurStart) * 0.02, 5) : 0;
-            
+
             // Darken effect on scroll instead of opacity
             const darkenStart = 300;
             const darkenAmount = scrolled > darkenStart ? Math.min((scrolled - darkenStart) * 0.005, 0.7) : 0;
-            
+
             hero.style.filter = `blur(${blurAmount}px) brightness(${1 - darkenAmount})`;
         });
 
@@ -479,9 +817,9 @@
         }
 
         // Add event listeners to cart buttons
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.add-to-cart').forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function () {
                     const plan = this.getAttribute('data-plan');
                     const price = this.getAttribute('data-price');
                     addToCart(plan, price);
@@ -499,7 +837,7 @@
         }
 
         // E-Mail validation
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const emailInput = document.getElementById('email');
             const emailFeedback = document.getElementById('email-feedback');
             const contactForm = document.querySelector('#contact form');
@@ -510,7 +848,7 @@
             }
 
             if (emailInput) {
-                emailInput.addEventListener('input', function() {
+                emailInput.addEventListener('input', function () {
                     if (this.value === '') {
                         this.classList.remove('is-valid', 'is-invalid');
                         if (emailFeedback) emailFeedback.style.display = 'none';
@@ -527,7 +865,7 @@
             }
 
             if (contactForm) {
-                contactForm.addEventListener('submit', function(e) {
+                contactForm.addEventListener('submit', function (e) {
                     e.preventDefault();
                     if (!validateEmail(emailInput.value)) {
                         emailInput.classList.add('is-invalid');
@@ -545,4 +883,5 @@
         });
     </script>
 </body>
+
 </html>
