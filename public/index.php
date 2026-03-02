@@ -1,3 +1,6 @@
+<?php
+require __DIR__ . '/../app/auth/bootstrap.php';
+?>
 <!DOCTYPE html>
 <html lang="de">
 
@@ -6,6 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BookIT - Raumverwaltung leicht gemacht</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
@@ -348,7 +352,7 @@
 </head>
 
 <body>
-    <?php require __DIR__ . '/partials/navbar.php'; ?>
+    <?php require __DIR__ . '/../views/partials/navbar.php'; ?>
     <section class="hero parallax">
         <div class="floating-shapes">
             <div class="shape"></div>
@@ -477,7 +481,6 @@
         </div>
     </section>
 
-    <!-- Zusätzliche Produkte ausgeblendet - Webshop kommt später
     <section id="additional-products" class="py-5 bg-light fade-in">
         <div class="container">
             <h2 class="text-center mb-5">Zusätzliche Produkte</h2>
@@ -500,12 +503,8 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-<<<<<<< HEAD
-                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
-=======
                             <button class="btn btn-primary add-to-cart" data-plan="hardware-basic" data-price="299">In
                                 den Warenkorb</button>
->>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -525,12 +524,8 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-<<<<<<< HEAD
-                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
-=======
                             <button class="btn btn-primary add-to-cart" data-plan="hardware-recommended"
                                 data-price="499">In den Warenkorb</button>
->>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -550,12 +545,8 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-<<<<<<< HEAD
-                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
-=======
                             <button class="btn btn-primary add-to-cart" data-plan="hardware-premium" data-price="799">In
                                 den Warenkorb</button>
->>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -574,12 +565,8 @@
                             <p class="card-text">Offizielles BookIT T-Shirt in verschiedenen Größen.</p>
                         </div>
                         <div class="card-footer text-center">
-<<<<<<< HEAD
-                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
-=======
                             <button class="btn btn-primary add-to-cart" data-plan="merch-tshirt" data-price="19.99">In
                                 den Warenkorb</button>
->>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -593,12 +580,8 @@
                             <p class="card-text">Stylische BookIT Kappe für den Alltag.</p>
                         </div>
                         <div class="card-footer text-center">
-<<<<<<< HEAD
-                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
-=======
                             <button class="btn btn-primary add-to-cart" data-plan="merch-cap" data-price="14.99">In den
                                 Warenkorb</button>
->>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
@@ -613,19 +596,16 @@
                             <p class="card-text">Praktischer BookIT Rucksack für unterwegs.</p>
                         </div>
                         <div class="card-footer text-center">
-<<<<<<< HEAD
-                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
-=======
                             <button class="btn btn-primary add-to-cart" data-plan="merch-backpack" data-price="24.99">In
                                 den Warenkorb</button>
->>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
-    <!-- Ende zusätzliche Produkte -->
+
+    <section id="demo" class="py-5 fade-in">
         <div class="container">
             <h2 class="text-center">Demo unseres Produkts</h2>
             <p class="text-center">Erleben Sie BookIT in Aktion – Buchen Sie einen Raum und checken Sie ein (simuliert).
@@ -699,17 +679,11 @@
                 <div class="modal-body text-center">
                     <i class="bi bi-check-circle-fill text-success display-1 mb-3"></i>
                     <p>Ihr Abonnement-Plan wurde erfolgreich ausgewählt!</p>
-                    <p class="text-muted">Der separate Webshop kommt bald!</p>
                 </div>
                 <div class="modal-footer justify-content-center">
                     <a href="cart.php" class="btn btn-primary">Zum Warenkorb</a>
-<<<<<<< HEAD
-                    <a href="mock_booking.php" class="btn btn-outline-primary">Demo buchen</a>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Schließen</button>
-=======
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Weiter
                         einkaufen</button>
->>>>>>> cd966d98eb6dc445beed32872f1f4028e100704a
                 </div>
             </div>
         </div>
@@ -830,11 +804,6 @@
         // Initialize cart badge and buttons on page load
         updateCartBadge();
         updatePlanButtons();
-
-        // Coming Soon functionality
-        function showComingSoon() {
-            alert('Der separate Webshop kommt bald! In der Zwischenzeit können Sie gerne eine Demo bei uns anfordern.');
-        }
 
         // E-Mail validation
         document.addEventListener('DOMContentLoaded', function () {

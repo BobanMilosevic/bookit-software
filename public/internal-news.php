@@ -1,3 +1,8 @@
+<?php
+require __DIR__ . '/../app/auth/bootstrap.php';
+
+require __DIR__ . '/../app/auth/require_login.php';
+?>
 <!DOCTYPE html>
 <html lang="de">
 
@@ -6,6 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interne News - BookIT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
@@ -55,7 +61,6 @@
                     <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="internal-news.php">Interne News</a></li>
                     <li class="nav-item"><a class="nav-link" href="customer-news.php">Öffentliche News</a></li>
-                    <li class="nav-item"><a class="nav-link" href="business-downloads.php">Business Downloads</a></li>
                     <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>
                 </ul>
             </div>

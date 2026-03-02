@@ -1,43 +1,63 @@
-# BookIT - Raumverwaltung und Buchungssoftware
+# BookIT (Refactored) – Raumverwaltung & Webshop (PHP)
 
-BookIT ist eine PHP-basierte Buchungsplattform für Raumverwaltung. Benutzer können Räume online buchen, erhalten einen Verifizierungscode per E-Mail und checken vor Ort ein, indem sie einen QR-Code scannen und den Code eingeben.
+## Ordnerstruktur
 
-## Features
+- `public/` – **DocumentRoot** (alle aufrufbaren Seiten + Assets)
+  - `auth/` – HTTP Endpoints (login/register/logout) als Wrapper
+  - `assets/` – CSS/JS/Images
+- `app/` – Anwendungslogik (DB, Auth)
+- `config/` – Konfiguration (ENV/Local)
+- `views/` – Partials/Templates
+- `storage/` – Logs/Uploads (nicht öffentlich)
 
-- Online-Buchung von Räumen
-- E-Mail-Verifizierung mit Code
-- Vor-Ort-Check-in via QR-Code und Code-Eingabe
-- Professionelle Website mit Bootstrap-Design
-- Mock-Versionen für Tests ohne DB/E-Mail
+## Setup (XAMPP)
 
-## Installation
+1. Projekt ins `htdocs` legen.
+2. **Empfohlen:** VirtualHost/DocumentRoot auf `public/` setzen  
+   (Alternativ: Aufrufen über `.../public/index.php`).
 
-1. Installiere Composer-Abhängigkeiten: `composer install`
-2. Richte eine MySQL-Datenbank 'bookit_db' ein mit der Tabelle:
-   ```sql
-   CREATE TABLE bookings (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       user_email VARCHAR(255),
-       room_id VARCHAR(255),
-       date DATE,
-       time TIME,
-       verification_code INT,
-       verified BOOLEAN DEFAULT 0
-   );
+3. Composer:
+   ```bash
+   composer install
    ```
-3. Konfiguriere SMTP in booking.php für E-Mail-Versand.
-4. Stelle die Dateien auf einem Webserver bereit.
 
-## Verwendung
+4. DB Zugangsdaten setzen:
+   - via ENV: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`
+   - oder lokal `config/local.php` anhand `config/local.sample.php` erstellen.
 
-- **index.php**: Startseite der Company Website
-- **booking.php**: Für echte Buchungen (mit DB und E-Mail)
-- **checkin.php**: Für echten Check-in (mit DB)
-- **mock_booking.php**: Mock-Buchung mit Raum-Auswahl (8:00-20:00, verfügbare/belegte Räume mit Belegungszeiten, Dauer-Auswahl 1-8 Stunden)
-- **mock_checkin.php**: Mock-Check-in ohne DB
+## Datenbank (Minimal-Schema)
 
-## Logo
+### Users (Login)
+```sql
+CREATE TABLE users (
+  idusers INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  passwort_hash VARCHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-Das Logo wird als `logo.png` im Projektordner erwartet.
+### Kategorien + Artikel (Webshop)
+```sql
+CREATE TABLE Kategorien (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE
+);
 
-Wenn kein Logo vorhanden ist, wird der Text "BookIT" angezeigt.
+CREATE TABLE Artikel (
+  Artikelnummer INT PRIMARY KEY,
+  Bezeichnung VARCHAR(255) NOT NULL,
+  Preis DECIMAL(10,2) NOT NULL,
+  Waehrung VARCHAR(10) NOT NULL DEFAULT 'EUR',
+  Stueckzahl INT NOT NULL DEFAULT 0,
+  kategorie_id INT NOT NULL,
+  CONSTRAINT fk_artikel_kategorie
+    FOREIGN KEY (kategorie_id) REFERENCES Kategorien(id)
+);
+```
+
+## Security Notes
+
+- `config/local.php` **nicht** committen (Passwörter/Secrets).
+- Passwort-Policy in `app/auth/register.php`: min. 12 Zeichen + Großbuchstabe + Zahl + Sonderzeichen.

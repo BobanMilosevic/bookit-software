@@ -1,10 +1,17 @@
+<?php
+require __DIR__ . '/../app/auth/require_login.php';
+
+$displayName = ($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : ($_SESSION['user_email'] ?? '');
+?>
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - BookIT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
@@ -14,16 +21,58 @@
             --light-bg: #f8fafc;
             --dark-text: #1e293b;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--light-bg); color: var(--dark-text); }
-        .navbar { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .dashboard-header { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 2rem 0; }
-        .stats-card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .stats-number { font-size: 2rem; font-weight: bold; color: var(--primary-color); }
-        .booking-card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid var(--primary-color); }
-        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border: none; }
-        .btn-primary:hover { transform: translateY(-2px); }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--light-bg);
+            color: var(--dark-text);
+        }
+
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem 0;
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .booking-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
@@ -40,11 +89,20 @@
                     <li class="nav-item"><a class="nav-link" href="#rooms">Räume</a></li>
                     <li class="nav-item"><a class="nav-link" href="customer-news.php">News</a></li>
                     <?php if (($_SESSION['user_role'] ?? 'customer') === 'employee'): ?>
-                    <li class="nav-item"><a class="nav-link" href="internal-news.php">Interne News</a></li>
+                        <li class="nav-item"><a class="nav-link" href="internal-news.php">Interne News</a></li>
                     <?php endif; ?>
                     <li class="nav-item"><a class="nav-link" href="#profile">Profil</a></li>
                     <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Abmelden</a></li>
                 </ul>
+            </div>
+            <div class="container mt-3">
+                <div class="alert alert-success">
+                    ✅ Eingeloggt als <strong>
+                        <?= htmlspecialchars((string) $displayName, ENT_QUOTES, 'UTF-8') ?>
+                    </strong>
+                    (User-ID:
+                    <?= (int) $_SESSION['user_id'] ?>)
+                </div>
             </div>
         </div>
     </nav>
@@ -159,26 +217,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Prüfe Login-Status
-        const currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
-
-        if (!currentUser) {
-            window.location.href = 'login.php';
-        }
-
-        // User Name anzeigen
-        document.getElementById('welcomeMessage').textContent = `Willkommen zurück, ${currentUser.name.split(' ')[0]}!`;
-        document.getElementById('userName').textContent = currentUser.name.split(' ')[0];
-
-        // Demo-Statistiken
+        // Demo-Statistiken (später aus DB laden)
         document.getElementById('totalBookings').textContent = '2';
         document.getElementById('upcomingBookings').textContent = '1';
         document.getElementById('completedBookings').textContent = '1';
         document.getElementById('cancelledBookings').textContent = '0';
 
         function logout() {
-            localStorage.removeItem('bookit_current_user');
-            window.location.href = 'login.php';
+            window.location.href = '/auth/logout.php';
         }
 
         // Smooth scrolling für Navigation
@@ -186,13 +232,10 @@
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                }
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
             });
         });
     </script>
 </body>
+
 </html>

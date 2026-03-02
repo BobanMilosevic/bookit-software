@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/db.php';
+require __DIR__ . '/../app/auth/bootstrap.php';
+
+require __DIR__ . '/../app/db.php';
 $articles = [];
 $grouped = [];
 $allCategories = [];
@@ -68,6 +70,7 @@ $allCategories = array_keys($grouped);
   <title>Webshop</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/app.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 
   <style>
@@ -170,7 +173,7 @@ $allCategories = array_keys($grouped);
 
 <body>
 
-<?php require __DIR__ . '/partials/navbar.php'; ?>
+<?php require __DIR__ . '/../views/partials/navbar.php'; ?>
 
 <header class="page-header py-4">
   <div class="container">

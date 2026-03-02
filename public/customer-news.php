@@ -1,3 +1,8 @@
+<?php
+require __DIR__ . '/../app/auth/bootstrap.php';
+
+require __DIR__ . '/../app/auth/require_login.php';
+?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -5,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kunden News - BookIT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
@@ -54,7 +60,6 @@
                     <li class="nav-item"><a class="nav-link" href="index.php">Startseite</a></li>
                     <li class="nav-item"><a class="nav-link active" href="customer-news.php">News</a></li>
                     <li class="nav-item" id="internalNewsLink" style="display: none;"><a class="nav-link" href="internal-news.php">Interne News</a></li>
-                    <li class="nav-item" id="businessDownloadsLink" style="display: none;"><a class="nav-link" href="business-downloads.php">Business Downloads</a></li>
                     <li class="nav-item" id="loginLink"><a class="nav-link" href="login.php">Login</a></li>
                     <li class="nav-item" id="logoutLink" style="display: none;"><a class="nav-link" href="logout.php">Logout</a></li>
                 </ul>
@@ -137,17 +142,15 @@
             document.getElementById('loginLink').style.display = 'none';
             document.getElementById('logoutLink').style.display = 'block';
             
-            // Zeige Links für Mitarbeiter und Business-Kunden
-            if (currentUser.role === 'employee' || currentUser.role === 'business') {
+            // Zeige internen News-Link nur für Mitarbeiter
+            if (currentUser.role === 'employee') {
                 document.getElementById('internalNewsLink').style.display = 'block';
-                document.getElementById('businessDownloadsLink').style.display = 'block';
             }
         } else {
             // Benutzer ist nicht eingeloggt
             document.getElementById('loginLink').style.display = 'block';
             document.getElementById('logoutLink').style.display = 'none';
             document.getElementById('internalNewsLink').style.display = 'none';
-            document.getElementById('businessDownloadsLink').style.display = 'none';
         }
 
         // Intersection Observer for scroll animations

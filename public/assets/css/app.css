@@ -1,0 +1,13 @@
+:root{
+  --primary-color:#118075;
+  --secondary-color:#4D8496;
+  --light-bg:#f8fafc;
+  --dark-text:#0f172a;
+  --muted-text:#64748b;
+}
+
+body{background:var(--light-bg); color:var(--dark-text);}
+a{color:var(--primary-color);}
+.text-primary{color:var(--primary-color)!important;}
+.btn-primary{background:var(--primary-color); border-color:var(--primary-color);}
+.btn-primary:hover{filter:brightness(0.95);}

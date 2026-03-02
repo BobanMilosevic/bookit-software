@@ -28,9 +28,13 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
   exit;
 }
 
-if (mb_strlen($password) < 6) {
+if (mb_strlen($password) < 12
+    || !preg_match('/[A-Z]/', $password)
+    || !preg_match('/\d/', $password)
+    || !preg_match('/[^A-Za-z0-9]/', $password)
+) {
   http_response_code(400);
-  echo json_encode(['ok' => false, 'error' => 'Passwort muss mindestens 6 Zeichen lang sein.']);
+  echo json_encode(['ok' => false, 'error' => 'Passwort muss mindestens 12 Zeichen lang sein und Großbuchstaben, Zahl und Sonderzeichen enthalten.']);
   exit;
 }
 
@@ -47,10 +51,13 @@ if ($stmt->fetchColumn()) {
 
 $hash = password_hash($password, PASSWORD_DEFAULT);
 
-// In deiner Tabelle heißt das Feld "username"
-$insert = $pdo->prepare('INSERT INTO users (email, passwort_hash, username) VALUES (?, ?, ?)');
+// Erwartete Spalten: idusers (AI), email, passwort_hash, username
+$insert = $pdo->prepare('INSERT INTO users (email, password_hash, username) VALUES (?, ?, ?)');
 $insert->execute([$email, $hash, $name]);
 
 $userId = (int)$pdo->lastInsertId();
 
-echo json_encode(['ok' => true, 'userId' => $userId]);
+header('Location: /login.php?error=' . urlencode('Registrierung fehlgeschlagen'));
+// ✅ Erfolgreich registriert -> zurück zur Startseite
+header('Location: /index.php');
+exit;

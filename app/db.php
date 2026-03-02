@@ -6,7 +6,7 @@ function db(): PDO
     static $pdo = null;
     if ($pdo instanceof PDO) return $pdo;
 
-    $config = require __DIR__ . '/config.php';
+    $config = require __DIR__ . '/../config/config.php';
     $db = $config['db'];
 
     $dsn = sprintf(
