@@ -55,6 +55,7 @@
                     <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="internal-news.php">Interne News</a></li>
                     <li class="nav-item"><a class="nav-link" href="customer-news.php">Öffentliche News</a></li>
+                    <li class="nav-item"><a class="nav-link" href="business-downloads.php">Business Downloads</a></li>
                     <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>
                 </ul>
             </div>

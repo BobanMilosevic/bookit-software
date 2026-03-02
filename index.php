@@ -180,6 +180,7 @@
         </div>
     </section>
 
+    <!-- Zusätzliche Produkte ausgeblendet - Webshop kommt später
     <section id="additional-products" class="py-5 bg-light fade-in">
         <div class="container">
             <h2 class="text-center mb-5">Zusätzliche Produkte</h2>
@@ -201,7 +202,7 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="hardware-basic" data-price="299">In den Warenkorb</button>
+                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
                         </div>
                     </div>
                 </div>
@@ -220,7 +221,7 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="hardware-recommended" data-price="499">In den Warenkorb</button>
+                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
                         </div>
                     </div>
                 </div>
@@ -239,7 +240,7 @@
                             </ul>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="hardware-premium" data-price="799">In den Warenkorb</button>
+                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
                         </div>
                     </div>
                 </div>
@@ -258,7 +259,7 @@
                             <p class="card-text">Offizielles BookIT T-Shirt in verschiedenen Größen.</p>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="merch-tshirt" data-price="19.99">In den Warenkorb</button>
+                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
                         </div>
                     </div>
                 </div>
@@ -272,7 +273,7 @@
                             <p class="card-text">Stylische BookIT Kappe für den Alltag.</p>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="merch-cap" data-price="14.99">In den Warenkorb</button>
+                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
                         </div>
                     </div>
                 </div>
@@ -287,15 +288,14 @@
                             <p class="card-text">Praktischer BookIT Rucksack für unterwegs.</p>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-primary add-to-cart" data-plan="merch-backpack" data-price="24.99">In den Warenkorb</button>
+                            <button class="btn btn-primary" onclick="showComingSoon()">Demo anfordern</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
-
-    <section id="demo" class="py-5 fade-in">
+    <!-- Ende zusätzliche Produkte -->
         <div class="container">
             <h2 class="text-center">Demo unseres Produkts</h2>
             <p class="text-center">Erleben Sie BookIT in Aktion – Buchen Sie einen Raum und checken Sie ein (simuliert).</p>
@@ -366,10 +366,12 @@
                 <div class="modal-body text-center">
                     <i class="bi bi-check-circle-fill text-success display-1 mb-3"></i>
                     <p>Ihr Abonnement-Plan wurde erfolgreich ausgewählt!</p>
+                    <p class="text-muted">Der separate Webshop kommt bald!</p>
                 </div>
                 <div class="modal-footer justify-content-center">
                     <a href="cart.php" class="btn btn-primary">Zum Warenkorb</a>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Weiter einkaufen</button>
+                    <a href="mock_booking.php" class="btn btn-outline-primary">Demo buchen</a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Schließen</button>
                 </div>
             </div>
         </div>
@@ -464,13 +466,13 @@
         function addToCart(plan, price) {
             // Remove any existing plan
             cart = [];
-            
+
             // Add new plan
             cart.push({ plan, price: parseFloat(price) });
             localStorage.setItem('bookit_cart', JSON.stringify(cart));
             updateCartBadge();
             updatePlanButtons();
-            
+
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('cartModal'));
             modal.show();
@@ -490,6 +492,11 @@
         // Initialize cart badge and buttons on page load
         updateCartBadge();
         updatePlanButtons();
+
+        // Coming Soon functionality
+        function showComingSoon() {
+            alert('Der separate Webshop kommt bald! In der Zwischenzeit können Sie gerne eine Demo bei uns anfordern.');
+        }
 
         // E-Mail validation
         document.addEventListener('DOMContentLoaded', function() {

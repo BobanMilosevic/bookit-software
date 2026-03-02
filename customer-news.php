@@ -54,6 +54,7 @@
                     <li class="nav-item"><a class="nav-link" href="index.php">Startseite</a></li>
                     <li class="nav-item"><a class="nav-link active" href="customer-news.php">News</a></li>
                     <li class="nav-item" id="internalNewsLink" style="display: none;"><a class="nav-link" href="internal-news.php">Interne News</a></li>
+                    <li class="nav-item" id="businessDownloadsLink" style="display: none;"><a class="nav-link" href="business-downloads.php">Business Downloads</a></li>
                     <li class="nav-item" id="loginLink"><a class="nav-link" href="login.php">Login</a></li>
                     <li class="nav-item" id="logoutLink" style="display: none;"><a class="nav-link" href="logout.php">Logout</a></li>
                 </ul>
@@ -136,15 +137,17 @@
             document.getElementById('loginLink').style.display = 'none';
             document.getElementById('logoutLink').style.display = 'block';
             
-            // Zeige internen News-Link nur für Mitarbeiter
-            if (currentUser.role === 'employee') {
+            // Zeige Links für Mitarbeiter und Business-Kunden
+            if (currentUser.role === 'employee' || currentUser.role === 'business') {
                 document.getElementById('internalNewsLink').style.display = 'block';
+                document.getElementById('businessDownloadsLink').style.display = 'block';
             }
         } else {
             // Benutzer ist nicht eingeloggt
             document.getElementById('loginLink').style.display = 'block';
             document.getElementById('logoutLink').style.display = 'none';
             document.getElementById('internalNewsLink').style.display = 'none';
+            document.getElementById('businessDownloadsLink').style.display = 'none';
         }
 
         // Intersection Observer for scroll animations

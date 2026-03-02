@@ -160,16 +160,20 @@
                         </div>
                         <div class="mb-3">
                             <label for="regPassword" class="form-label">Passwort</label>
-                            <input type="password" class="form-control" id="regPassword" required minlength="6">
+                            <input type="password" class="form-control" id="regPassword" required minlength="8">
+                            <div class="form-text small">
+                                Mindestens 8 Zeichen, 1 Großbuchstabe, 1 Kleinbuchstabe, 1 Zahl, 1 Sonderzeichen
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="regConfirmPassword" class="form-label">Passwort bestätigen</label>
-                            <input type="password" class="form-control" id="regConfirmPassword" required minlength="6">
+                            <input type="password" class="form-control" id="regConfirmPassword" required minlength="8">
                         </div>
                         <div class="mb-3">
                             <label for="regRole" class="form-label">Rolle</label>
                             <select class="form-control" id="regRole" required>
                                 <option value="customer">Kunde</option>
+                                <option value="business">Business-Kunde</option>
                                 <option value="employee">Mitarbeiter</option>
                             </select>
                         </div>
@@ -205,7 +209,37 @@
             const modal = new bootstrap.Modal(document.getElementById('registerModal'));
             modal.show();
         }
-
+        // Passwort-Stärke Validierung
+        function validatePasswordStrength(password) {
+            const errors = [];
+            
+            // Mindestens 8 Zeichen
+            if (password.length < 8) {
+                errors.push('• Mindestens 8 Zeichen lang');
+            }
+            
+            // Mindestens 1 Großbuchstabe
+            if (!/[A-Z]/.test(password)) {
+                errors.push('• Mindestens 1 Großbuchstabe (A-Z)');
+            }
+            
+            // Mindestens 1 Kleinbuchstabe
+            if (!/[a-z]/.test(password)) {
+                errors.push('• Mindestens 1 Kleinbuchstabe (a-z)');
+            }
+            
+            // Mindestens 1 Zahl
+            if (!/\d/.test(password)) {
+                errors.push('• Mindestens 1 Zahl (0-9)');
+            }
+            
+            // Mindestens 1 Sonderzeichen
+            if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+                errors.push('• Mindestens 1 Sonderzeichen (!@#$%^&*...)');
+            }
+            
+            return errors;
+        }
         // Login Form Handler
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -244,8 +278,10 @@
                 return;
             }
 
-            if (password.length < 6) {
-                showAlert('Passwort muss mindestens 6 Zeichen lang sein!');
+            // Starke Passwort-Validierung
+            const passwordErrors = validatePasswordStrength(password);
+            if (passwordErrors.length > 0) {
+                showAlert('Passwort zu schwach:<br>' + passwordErrors.join('<br>'));
                 return;
             }
 
