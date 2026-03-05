@@ -50,7 +50,7 @@ require __DIR__ . '/../app/auth/require_login.php';
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="index.php">
-                <img src="logo.png" alt="BookIT Logo" style="height: 40px; margin-right: 10px;">
+                <img src="assets/img/logo.png" alt="BookIT Logo" style="height: 40px; margin-right: 10px;">
                 <span style="font-weight: 700; color: var(--primary-color);">BookIT</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
