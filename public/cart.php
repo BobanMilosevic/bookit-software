@@ -2,6 +2,10 @@
 require __DIR__ . '/../app/auth/bootstrap.php';
 
 require __DIR__ . '/../app/auth/require_login.php';
+
+// Lese User-Daten aus Session
+$user_name = $_SESSION['user_name'] ?? $_SESSION['user_email'] ?? 'Benutzer';
+$user_email = $_SESSION['user_email'] ?? 'keine@email.de';
 ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -136,6 +140,47 @@ require __DIR__ . '/../app/auth/require_login.php';
         </div>
     </div>
 
+    <!-- Modal für Checkout (Zahlungsmethode) -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="checkoutModalLabel">Bestellung abschließen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Rechnungsempfänger</label>
+                            <div class="form-control-plaintext"><strong id="displayCustomerName"><?php echo htmlspecialchars($user_name); ?></strong></div>
+                            <small class="text-muted" id="displayCustomerEmail"><?php echo htmlspecialchars($user_email); ?></small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="paymentMethodSelect" class="form-label">Zahlungsmethode</label>
+                            <select class="form-select" id="paymentMethodSelect" required>
+                                <option value="">-- Wählen Sie eine Zahlungsmethode --</option>
+                                <option value="credit_card">Kreditkarte</option>
+                                <option value="bank_transfer">Banküberweisung</option>
+                                <option value="paypal">PayPal</option>
+                                <option value="sepa">SEPA-Lastschrift</option>
+                            </select>
+                        </div>
+                        
+                        <div class="alert alert-info small">
+                            <i class="bi bi-info-circle"></i>
+                            Eine detaillierte Rechnung wird nach Abschluss an Ihre E-Mail-Adresse versendet.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="completeOrder()">Bestellung abschließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let cart = JSON.parse(localStorage.getItem('bookit_cart')) || [];
@@ -244,7 +289,102 @@ require __DIR__ . '/../app/auth/require_login.php';
         }
 
         function proceedToCheckout() {
-            alert('Vielen Dank für Ihr Interesse! Die Checkout-Funktionalität wird bald verfügbar sein. Kontaktieren Sie uns für weitere Informationen.');
+            // Öffne Zahlungsmethoden-Modal
+            const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+            checkoutModal.show();
+        }
+        
+        function completeOrder() {
+            const paymentMethod = document.getElementById('paymentMethodSelect').value;
+            
+            if (!paymentMethod) {
+                alert('Bitte wählen Sie eine Zahlungsmethode!');
+                return;
+            }
+            
+            if (cart.length === 0) {
+                alert('Ihr Warenkorb ist leer!');
+                return;
+            }
+            
+            // Sende Bestellung an checkout.php
+            const orderData = {
+                cart: cart,
+                services: additionalServices,
+                paymentMethod: paymentMethod
+            };
+            
+            // Debug: Log der versendeten Daten
+            console.log('=== CHECKOUT DEBUG ===');
+            console.log('Cart Items:', cart.length);
+            console.log('Cart Data:', cart);
+            console.log('Payment Method:', paymentMethod);
+            console.log('Services:', additionalServices);
+            console.log('Sending:', JSON.stringify(orderData));
+            console.log('================');
+            
+            fetch('checkout.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            })
+            .then(res => {
+                // Debug: Log der Response
+                console.log('Checkout Response Status:', res.status);
+                console.log('Checkout Response Headers:', res.headers.get('Content-Type'));
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                return res.text();
+            })
+            .then(text => {
+                // Debug: Log des raw Text
+                console.log('Checkout Raw Response:', text);
+                
+                if (!text) {
+                    throw new Error('Leere Antwort von Server');
+                }
+                
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    throw new Error(`JSON Parse Fehler: ${e.message}, Response: ${text.substring(0, 200)}`);
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    const customerEmail = document.getElementById('displayCustomerEmail').textContent;
+                    let msg = 'Bestellung erfolgreich! ';
+                    
+                    if (data.email_sent) {
+                        msg += 'Eine Rechnung wurde an ' + customerEmail + ' versendet.';
+                    } else {
+                        msg += 'Bestellung gespeichert. ';
+                        if (data.email_error) {
+                            msg += '(Rechnung konnte nicht versendet werden: ' + data.email_error.substring(0, 50) + ')';
+                        }
+                    }
+                    
+                    alert(msg);
+                    cart = [];
+                    additionalServices = { website: false, hosting: false };
+                    localStorage.setItem('bookit_cart', JSON.stringify(cart));
+                    localStorage.setItem('bookit_services', JSON.stringify(additionalServices));
+                    updateCartBadge();
+                    renderCart();
+                    
+                    // Schließe Modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
+                    modal.hide();
+                } else {
+                    alert('Fehler: ' + (data.error || 'Bestellung konnte nicht verarbeitet werden.'));
+                }
+            })
+            .catch(err => {
+                alert('Fehler beim Senden der Bestellung: ' + err);
+            });
         }
 
         function toggleService(service, price) {
@@ -262,6 +402,17 @@ require __DIR__ . '/../app/auth/require_login.php';
         // Initialize
         updateCartBadge();
         renderCart();
+        
+        // Lade User-Daten nach dem Laden des Modal (wird durch PHP provided)
+        document.addEventListener('DOMContentLoaded', function() {
+            const customerNameElement = document.getElementById('displayCustomerName');
+            const customerEmailElement = document.getElementById('displayCustomerEmail');
+            
+            if (customerNameElement && customerEmailElement) {
+                // User-Daten sind bereits im HTML gesetzt (durch PHP)
+                // Sie werden automatisch angezeigt wenn Modal geöffnet wird
+            }
+        });
     </script>
 </body>
 </html>
