@@ -35,6 +35,10 @@ $displayName = $userName !== '' ? $userName : $userEmail;
       </a>
 
       <?php if ($loggedIn): ?>
+        <!-- Dashboard Button -->
+        <a class="bk-nav__btn bk-nav__btn--dashboard" href="dashboard.php">
+          <i class="bi bi-grid-1x2"></i> Dashboard
+        </a>
         <!-- User chip -->
         <span class="bk-nav__user">
           <i class="bi bi-person-circle"></i>
@@ -63,6 +67,7 @@ $displayName = $userName !== '' ? $userName : $userEmail;
       <li><a href="/#contact">Kontakt</a></li>
       <li><a href="/cart.php">Warenkorb</a></li>
       <?php if ($loggedIn): ?>
+        <li><a href="/dashboard.php" class="bk-nav__drawer-dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a></li>
         <li><a href="/auth/logout.php" class="bk-nav__drawer-logout">Logout</a></li>
       <?php else: ?>
         <li><a href="/login.php" class="bk-nav__drawer-login">Login</a></li>
@@ -250,6 +255,19 @@ $displayName = $userName !== '' ? $userName : $userEmail;
   box-shadow: 0 4px 12px rgba(17,128,117,0.3);
 }
 
+.bk-nav__btn--dashboard {
+  background: var(--db-green-pale, #e6f4f2);
+  color: #118075;
+  border-color: rgba(17,128,117,.3);
+}
+
+.bk-nav__btn--dashboard:hover {
+  background: #118075;
+  color: #fff;
+  border-color: #118075;
+  transform: translateY(-1px);
+}
+
 .bk-nav__btn--ghost {
   background: transparent;
   color: #dc2626;
@@ -328,6 +346,11 @@ $displayName = $userName !== '' ? $userName : $userEmail;
   margin-top: 0.5rem;
   border-top: 1px solid #e2e8f0;
   padding-top: 0.75rem !important;
+}
+
+.bk-nav__drawer-dashboard {
+  color: #118075 !important;
+  font-weight: 600 !important;
 }
 
 .bk-nav__drawer-logout {

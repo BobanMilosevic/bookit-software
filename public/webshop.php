@@ -17,6 +17,7 @@ try {
           a.Preis,
           a.Waehrung,
           a.Stueckzahl,
+          a.bild_pfad,
           k.name AS Kategorie
         FROM Artikel a
         JOIN Kategorien k ON k.id = a.kategorie_id
@@ -58,6 +59,7 @@ uksort($grouped, function ($a, $b) use ($preferredOrder) {
 
 $allCategories = array_keys($grouped);
 
+/* Kategorie-Icons als Fallback wenn kein Bild in DB gespeichert */
 $categoryIcons = [
     'Abos'      => 'bi-calendar-check',
     'Hardware'  => 'bi-cpu',
@@ -65,9 +67,9 @@ $categoryIcons = [
     'Sonstiges' => 'bi-box-seam',
 ];
 
-function getProductImage(string $nr, string $cat, array $images, array $icons): array {
-    if (isset($images[$nr])) {
-        return ['type' => 'img', 'src' => $images[$nr]];
+function getProductImage(string $bildPfad, string $cat, array $icons): array {
+    if ($bildPfad !== '') {
+        return ['type' => 'img', 'src' => $bildPfad];
     }
     $icon = $icons[$cat] ?? 'bi-box';
     return ['type' => 'icon', 'icon' => $icon];
@@ -177,18 +179,9 @@ function getProductImage(string $nr, string $cat, array $images, array $icons): 
                         $priceRaw = (float)$a['Preis'];
                         $price    = number_format($priceRaw, 2, ',', '.');
 
-                        if ($stock <= 0) {
-                            $stockClass = 'ws-stock--out';
-                            $stockText  = 'Ausverkauft';
-                        } elseif ($stock <= 5) {
-                            $stockClass = 'ws-stock--low';
-                            $stockText  = 'Nur noch ' . $stock;
-                        } else {
-                            $stockClass = 'ws-stock--ok';
-                            $stockText  = 'Lager: ' . $stock;
-                        }
 
-                        $media = getProductImage($nr, $cat, $productImages, $categoryIcons);
+                        $bildPfad = (string)($a['bild_pfad'] ?? '');
+                        $media = getProductImage($bildPfad, $cat, $categoryIcons);
                         ?>
                         <div class="col-12 col-sm-6 col-lg-4 product-item"
                              data-name="<?= htmlspecialchars(mb_strtolower($name)) ?>"
@@ -198,9 +191,8 @@ function getProductImage(string $nr, string $cat, array $images, array $icons): 
                             <div class="ws-card">
 
                                 <!-- ─── PRODUKTBILD ───────────────────────────
-                                     Wenn ein Bild im $productImages-Array oben
-                                     eingetragen ist, wird es hier angezeigt.
-                                     Sonst erscheint ein Kategorie-Icon.
+                                     Bild wird aus der DB-Spalte bild_pfad geladen.
+                                     Kein Bild gesetzt → Kategorie-Icon als Fallback.
                                 ─────────────────────────────────────────── -->
                                 <div class="ws-card__media <?= $media['type'] === 'icon' ? 'ws-card__media--placeholder' : '' ?>">
                                     <?php if ($media['type'] === 'img'): ?>
@@ -221,9 +213,7 @@ function getProductImage(string $nr, string $cat, array $images, array $icons): 
                                         <div class="ws-card__price">
                                             <?= $price ?> <?= htmlspecialchars($currency) ?>
                                         </div>
-                                        <span class="ws-stock <?= $stockClass ?>">
-                                            <?= $stockText ?>
-                                        </span>
+                                        
                                     </div>
 
                                     <button
