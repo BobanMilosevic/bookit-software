@@ -11,6 +11,8 @@
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as MailException;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 // === INIT (REIHENFOLGE WICHTIG!) ===
 require_once __DIR__ . '/../app/auth/bootstrap.php';  // Session ZUERST
@@ -46,7 +48,37 @@ try {
     if (!$customerEmail) {
         throw new Exception('Keine Email in Session');
     }
-    
+
+    // === KUNDENDATEN AUS DB ===
+    require_once __DIR__ . '/../app/db.php';
+    $cd = [];
+    try {
+        $pdo  = db();
+        $stmt = $pdo->prepare("
+            SELECT
+                k.Firmenname,
+                k.`Ansprechpartner Vorname`  AS ap_vorname,
+                k.`Ansprechpartner Nachname` AS ap_nachname,
+                k.SubTier,
+                k.Kontodaten_IBAN            AS iban,
+                p.Adresse,
+                p.PLZ,
+                p.Ort,
+                p.Telefon,
+                kd.Bank,
+                kd.BIC
+            FROM users u
+            LEFT JOIN Kunden k          ON k.Kundennummer           = u.Kunden_Kundennummer
+            LEFT JOIN persoenliche_daten p ON p.id_persoenliche_daten = k.persoenliche_daten_id
+            LEFT JOIN Kontodaten kd     ON kd.IBAN                  = k.Kontodaten_IBAN
+            WHERE u.idusers = ?
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+        $cd = $stmt->fetch() ?: [];
+    } catch (\Throwable $dbEx) {
+        error_log('Customer data fetch: ' . $dbEx->getMessage());
+    }
+
     // === BETRAG BERECHNEN ===
     $total = 0;
     $items = [];
@@ -55,7 +87,7 @@ try {
         $price = floatval($item['price'] ?? 0);
         $total += $price;
         $items[] = [
-            'name' => htmlspecialchars($item['plan'] ?? 'Artikel'),
+            'name' => htmlspecialchars($item['name'] ?? $item['plan'] ?? 'Artikel'),
             'price' => $price
         ];
     }
@@ -144,6 +176,142 @@ try {
     </html>
     ";
     
+    // === PDF ERSTELLEN ===
+    $mwstSatz  = 0.20;
+    $nettoGes  = $total / (1 + $mwstSatz);
+    $mwstGes   = $total - $nettoGes;
+    $rechnDatum = date('d.m.Y H:i');
+
+    $pdfHtml = '<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<style>
+  body  { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #222; margin:0; padding:0; }
+  .page { padding: 40px 50px; }
+  table { width:100%; border-collapse:collapse; }
+  th    { background:#118075; color:#fff; padding:8px 10px; text-align:left; font-size:10px; }
+  td    { padding:7px 10px; border-bottom:1px solid #e8e8e8; }
+  tr:nth-child(even) td { background:#f8faf9; }
+  .total-row td { border-top:2px solid #118075; font-weight:bold; font-size:13px; color:#118075; padding-top:8px; }
+  .badge { background:#e6f4f1; color:#118075; padding:3px 10px; border-radius:12px; font-size:9px; font-weight:bold; text-transform:uppercase; }
+  .hint { margin-top:24px; background:#f0faf8; border-left:4px solid #118075; padding:10px 14px; font-size:10px; }
+  .footer { margin-top:40px; border-top:1px solid #ccc; padding-top:10px; font-size:9px; color:#888; text-align:center; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <table style="border:none; margin-bottom:28px;">
+    <tr>
+      <td style="border:none; padding:0; vertical-align:top;">
+        <div style="font-size:22px; font-weight:bold; color:#118075; letter-spacing:1px;">BookIT</div>
+        <div style="color:#888; font-size:10px;">Raumverwaltung</div>
+      </td>
+      <td style="border:none; padding:0; text-align:right; vertical-align:top;">
+        <div style="font-size:20px; font-weight:bold; color:#118075;">RECHNUNG</div>
+        <div style="font-size:11px; margin-top:4px;">Nr. <strong>' . htmlspecialchars($invoiceNum) . '</strong></div>
+        <div style="font-size:11px;">Datum: <strong>' . htmlspecialchars($rechnDatum) . '</strong></div>
+        <div class="badge">Zahlungsart: ' . htmlspecialchars($paymentMethod) . '</div>
+      </td>
+    </tr>
+  </table>
+
+  <table style="border:none; margin-bottom:24px;">
+    <tr>
+      <td style="border:none; padding:0; width:50%; vertical-align:top;">
+        <div style="color:#888; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Absender</div>
+        <strong>bookIt GmbH</strong><br>
+        Musterstra&szlig;e 1<br>1010 Wien<br>
+        E-Mail: office@bookit.at<br>UID: ATU12345678
+      </td>
+      <td style="border:none; padding:0; width:50%; vertical-align:top;">
+        <div style="color:#888; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Rechnungsempf&auml;nger</div>
+        ' . (!empty($cd['Firmenname']) ? '<strong>' . htmlspecialchars($cd['Firmenname']) . '</strong><br>' : '') . '
+        ' . (!empty($cd['ap_vorname']) || !empty($cd['ap_nachname']) ? htmlspecialchars(trim(($cd['ap_vorname'] ?? '') . ' ' . ($cd['ap_nachname'] ?? ''))) . '<br>' : '<strong>' . htmlspecialchars($customerName) . '</strong><br>') . '
+        ' . (!empty($cd['Adresse']) ? htmlspecialchars($cd['Adresse']) . '<br>' : '') . '
+        ' . (!empty($cd['PLZ']) || !empty($cd['Ort']) ? htmlspecialchars(trim(($cd['PLZ'] ?? '') . ' ' . ($cd['Ort'] ?? ''))) . '<br>' : '') . '
+        E-Mail: ' . htmlspecialchars($customerEmail) . '<br>
+        ' . (!empty($cd['Telefon']) ? 'Tel.: ' . htmlspecialchars($cd['Telefon']) . '<br>' : '') . '
+        ' . (!empty($cd['iban']) ? 'IBAN: ' . htmlspecialchars($cd['iban']) . '<br>' : '') . '
+        ' . (!empty($cd['Bank']) ? 'Bank: ' . htmlspecialchars($cd['Bank']) . (!empty($cd['BIC']) ? ' &nbsp;|&nbsp; BIC: ' . htmlspecialchars($cd['BIC']) : '') . '<br>' : '') . '
+      </td>
+    </tr>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:60%;">Bezeichnung</th>
+        <th style="width:20%; text-align:right;">Einzelpreis (netto)</th>
+        <th style="width:20%; text-align:right;">Betrag (netto)</th>
+      </tr>
+    </thead>
+    <tbody>';
+
+    foreach ($items as $item) {
+        $itemNetto = $item['price'] / (1 + $mwstSatz);
+        $pdfHtml .= '<tr>
+            <td>' . htmlspecialchars($item['name']) . '</td>
+            <td style="text-align:right;">' . number_format($itemNetto, 2, ',', '.') . ' &euro;</td>
+            <td style="text-align:right;">' . number_format($itemNetto, 2, ',', '.') . ' &euro;</td>
+        </tr>';
+    }
+
+    $pdfHtml .= '    </tbody>
+  </table>
+
+  <table style="border:none; margin-top:16px;">
+    <tr>
+      <td style="border:none; width:55%;"></td>
+      <td style="border:none; text-align:right; padding:4px 10px;">Nettobetrag:</td>
+      <td style="border:none; text-align:right; padding:4px 10px; white-space:nowrap;">' . number_format($nettoGes, 2, ',', '.') . ' &euro;</td>
+    </tr>
+    <tr>
+      <td style="border:none;"></td>
+      <td style="border:none; text-align:right; padding:4px 10px;">MwSt. (20&nbsp;%):</td>
+      <td style="border:none; text-align:right; padding:4px 10px; white-space:nowrap;">' . number_format($mwstGes, 2, ',', '.') . ' &euro;</td>
+    </tr>
+    <tr class="total-row">
+      <td style="border:none;"></td>
+      <td style="text-align:right; font-weight:bold; font-size:13px; color:#118075; border-top:2px solid #118075; padding:8px 10px 4px;">Gesamtbetrag (brutto):</td>
+      <td style="text-align:right; font-weight:bold; font-size:13px; color:#118075; border-top:2px solid #118075; padding:8px 10px 4px; white-space:nowrap;">' . number_format($total, 2, ',', '.') . ' &euro;</td>
+    </tr>
+  </table>
+
+  <div class="hint">
+    <strong>Zahlungsinformationen:</strong><br>
+    Bitte &uuml;berweisen Sie <strong>' . number_format($total, 2, ',', '.') . ' &euro;</strong> innerhalb von
+    <strong>14 Tagen</strong> unter Angabe der Rechnungsnummer <strong>' . htmlspecialchars($invoiceNum) . '</strong>.<br>
+    IBAN: AT12 3456 7890 1234 5678 &nbsp;|&nbsp; BIC: OPSKATWW
+  </div>
+
+  <div class="footer">
+    bookIt GmbH &bull; Musterstra&szlig;e 1 &bull; 1010 Wien &bull; office@bookit.at &bull; UID: ATU12345678
+  </div>
+</div>
+</body>
+</html>';
+
+    $pdfAttachment = null;
+    $pdfTempFile   = null;
+    try {
+        $dompdfOpt = new Options();
+        $dompdfOpt->set('isRemoteEnabled', false);
+        $dompdfOpt->set('defaultFont', 'DejaVu Sans');
+        $dompdf = new Dompdf($dompdfOpt);
+        $dompdf->loadHtml($pdfHtml, 'UTF-8');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+        $pdfAttachment = $dompdf->output();
+        if (!empty($pdfAttachment)) {
+            $pdfTempFile = tempnam(sys_get_temp_dir(), 'bookit_inv_') . '.pdf';
+            file_put_contents($pdfTempFile, $pdfAttachment);
+        }
+    } catch (\Throwable $pdfEx) {
+        error_log('PDF generation error: ' . $pdfEx->getMessage());
+    }
+
     // === EMAIL VERSENDEN ===
     $mailConfig = require __DIR__ . '/../config/mail.php';
     
@@ -167,8 +335,13 @@ try {
     $mail->isHTML(true);
     $mail->Subject = "Ihre Rechnung $invoiceNum - BookIT";
     $mail->Body = $html;
-    $mail->AltBody = "Rechnung $invoiceNum\nBetrag: €" . number_format($total, 2, ',', '.');
-    
+    $mail->AltBody = "Rechnung $invoiceNum\nBetrag: €" . number_format($total, 2, ',', '.') . "\nDie detaillierte Rechnung finden Sie im PDF-Anhang.";
+
+    // PDF-Anhang
+    if ($pdfTempFile && file_exists($pdfTempFile)) {
+        $mail->addAttachment($pdfTempFile, 'Rechnung_' . $invoiceNum . '.pdf', PHPMailer::ENCODING_BASE64, 'application/pdf');
+    }
+
     $emailSent = false;
     $emailError = null;
     try {
@@ -177,8 +350,13 @@ try {
     } catch (Exception $mailEx) {
         $emailError = $mailEx->getMessage();
         error_log('Mail send error: ' . $emailError);
+    } finally {
+        // Temp-PDF-Datei wieder löschen
+        if ($pdfTempFile && file_exists($pdfTempFile)) {
+            @unlink($pdfTempFile);
+        }
     }
-    
+
     // === RESPONSE ===
     ob_end_clean();
     http_response_code(200);
