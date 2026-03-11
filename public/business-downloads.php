@@ -306,16 +306,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Prüfe Benutzerrolle und Zugriffsberechtigung
-        const currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
-
-        if (!currentUser) {
-            alert('Sie müssen sich zuerst anmelden.');
-            window.location.href = 'login.php';
-        } else if (currentUser.role !== 'business' && currentUser.role !== 'employee') {
-            alert('Zugriff verweigert. Diese Seite ist nur für Business-Kunden und Mitarbeiter zugänglich.');
-            window.location.href = 'customer-news.php';
-        }
-
+       // Client-seitige Prüfungen vorübergehend deaktiviert - Server-seitige Auth reicht
+        // if (!currentUser) {
+        //     alert('Sie müssen sich zuerst anmelden.');
+        //     window.location.href = 'login.php';
+        // }
+        // // Rolle-Prüfung auskommentiert - alle haben Zugriff
+        // // else if (currentUser.role !== 'business' && currentUser.role !== 'employee') {
+        // //     alert('Zugriff verweigert. Diese Seite ist nur für Business-Kunden und Mitarbeiter zugänglich.');
+        // //     window.location.href = 'customer-news.php';
+        // // }
         // Navigation aktualisieren
         if (currentUser) {
             document.getElementById('loginLink').style.display = 'none';

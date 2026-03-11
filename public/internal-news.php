@@ -135,31 +135,18 @@ require __DIR__ . '/../app/auth/require_login.php';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Prüfe Benutzerrolle
-        const currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
+        // Client-seitige Prüfungen vorübergehend deaktiviert - Server-seitige Auth reicht
+        // const currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
         
-        if (!currentUser) {
-            alert('Sie müssen sich zuerst anmelden.');
-            window.location.href = 'login.php';
-        } else if (currentUser.role !== 'employee') {
-            alert('Zugriff verweigert. Diese Seite ist nur für Mitarbeiter zugänglich.');
-            window.location.href = 'customer-news.php';
-        }
-
-        // Intersection Observer for scroll animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, observerOptions);
-
-        // Observe elements
+        // if (!currentUser) {
+        //     alert('Sie müssen sich zuerst anmelden.');
+        //     window.location.href = 'login.php';
+        // }
+        // // Rolle-Prüfung auskommentiert - alle haben Zugriff
+        // // else if (currentUser.role !== 'employee') {
+        // //     alert('Zugriff verweigert. Diese Seite ist nur für Mitarbeiter zugänglich.');
+        // //     window.location.href = 'customer-news.php';
+        // // }        // Observe elements
         document.querySelectorAll('.news-card').forEach(card => {
             observer.observe(card);
         });
