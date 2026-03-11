@@ -1,1 +1,1 @@
-<?php require __DIR__ . '/../../app/auth/login.php';
+<?php require __DIR__ . '/../../app/auth/login.php'; 

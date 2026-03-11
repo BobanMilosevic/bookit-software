@@ -46,7 +46,7 @@ $displayName = $userName !== '' ? $userName : $userEmail;
         </span>
         <a class="bk-nav__btn bk-nav__btn--ghost" href="/auth/logout.php">Logout</a>
       <?php else: ?>
-        <a class="bk-nav__btn bk-nav__btn--primary" href="/login.php">Login</a>
+        <a class="bk-nav__btn bk-nav__btn--primary" href="/auth/login.php">Login</a>
       <?php endif; ?>
 
       <!-- Hamburger -->
@@ -68,7 +68,7 @@ $displayName = $userName !== '' ? $userName : $userEmail;
       <li><a href="/cart.php">Warenkorb</a></li>
       <?php if ($loggedIn): ?>
         <li><a href="/dashboard.php" class="bk-nav__drawer-dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</a></li>
-        <li><a href="/auth/logout.php" class="bk-nav__drawer-logout">Logout</a></li>
+        <li><a href="logout.php" class="bk-nav__drawer-logout">Logout</a></li>
       <?php else: ?>
         <li><a href="/login.php" class="bk-nav__drawer-login">Login</a></li>
       <?php endif; ?>

@@ -19,7 +19,33 @@ if ($email === '' || $pass === '') {
     exit;
 }
 
-$stmt = $pdo->prepare('SELECT idusers, email, username, password_hash FROM users WHERE email = :email LIMIT 1');
+$stmt = $pdo->prepare("
+    SELECT
+        u.idusers,
+        u.email,
+        u.username,
+        u.password_hash,
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM users_has_Rollen uhr
+                INNER JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
+                WHERE uhr.users_idusers = u.idusers
+                  AND r.Rollenname = 'admin'
+            ) THEN 'admin'
+            WHEN EXISTS (
+                SELECT 1
+                FROM users_has_Rollen uhr
+                INNER JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
+                WHERE uhr.users_idusers = u.idusers
+                  AND r.Rollenname = 'employee'
+            ) THEN 'employee'
+            ELSE 'customer'
+        END AS role
+    FROM users u
+    WHERE u.email = :email
+    LIMIT 1
+");
 $stmt->execute([':email' => $email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -34,6 +60,7 @@ if (!$user || $hash === '' || !password_verify($pass, $hash)) {
 $_SESSION['user_id'] = (int)$user['idusers'];
 $_SESSION['user_email'] = (string)($user['email'] ?? '');
 $_SESSION['user_name'] = (string)($user['username'] ?? '');
+$_SESSION['user_role'] = (string)($user['role'] ?? 'customer');
 
 session_regenerate_id(true);
 
