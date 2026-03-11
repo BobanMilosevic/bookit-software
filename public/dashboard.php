@@ -1,319 +1,699 @@
 <?php
 declare(strict_types=1);
 
-$appRoot = dirname(__DIR__);  // = bookit-software/
+$appRoot = dirname(__DIR__);
 require $appRoot . '/app/auth/require_login.php';
 require $appRoot . '/app/db.php';
 
-$userId      = (int)$_SESSION['user_id'];
-$userName    = $_SESSION['user_name']    ?? '';
-$userEmail   = $_SESSION['user_email']   ?? '';
-$userRole    = $_SESSION['user_role']    ?? 'customer';
-$displayName = $userName !== '' ? $userName : $userEmail;
+$userId = (int) $_SESSION['user_id'];
+$userRole = $_SESSION['user_role'] ?? 'Kunde';
+$displayName = ($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : ($_SESSION['user_email'] ?? '');
 
-/* ── Daten aus der Datenbank ────────────────────────────── */
+/* ── Nur Admins dürfen rein ─────────────────────────────── */
+// Rolle direkt aus DB prüfen (nicht nur Session) — sicherer
 try {
     $pdo = db();
 
-    $stats = $pdo->prepare("
+    $roleCheck = $pdo->prepare("
         SELECT
-            COUNT(*)                                              AS gesamt,
-            SUM(status IN ('ausstehend','bestaetigt')
-                AND start_zeit > NOW())                          AS anstehend,
-            SUM(status = 'abgeschlossen')                        AS abgeschlossen,
-            SUM(status = 'storniert')                            AS storniert
-        FROM Buchungen
-        WHERE user_id = ?
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM users_has_Rollen uhr
+                    INNER JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
+                    WHERE uhr.users_idusers = ?
+                      AND r.Rollenname = 'admin'
+                ) THEN 'admin'
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM users_has_Rollen uhr
+                    INNER JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
+                    WHERE uhr.users_idusers = ?
+                      AND r.Rollenname = 'employee'
+                ) THEN 'employee'
+                ELSE 'Kunde'
+            END AS role
     ");
-    $stats->execute([$userId]);
-    $s = $stats->fetch();
+    $roleCheck->execute([$userId, $userId]);
+    $liveRole = (string) ($roleCheck->fetchColumn() ?? 'Kunde');
+} catch (Throwable) {
+    $liveRole = (string) $userRole;
+}
 
-    $buchungen = $pdo->prepare("
+if ($liveRole !== 'admin') {
+    header('Location: /index.php?error=kein_zugriff');
+    exit;
+}
+
+/* ── Daten aus DB ────────────────────────────────────────── */
+try {
+    $pdo = db();
+
+    // User-Statistiken
+    $userStats = $pdo->query("
         SELECT
-            b.id, b.start_zeit, b.end_zeit, b.status, b.notiz,
-            r.name AS raum_name, r.standort AS raum_standort
-        FROM Buchungen b
-        JOIN Raeume r ON r.id = b.raum_id
-        WHERE b.user_id = ?
-        ORDER BY
-            CASE WHEN b.start_zeit >= NOW() THEN 0 ELSE 1 END,
-            b.start_zeit ASC
+            COUNT(DISTINCT u.idusers)                                          AS gesamt,
+            SUM(r.Rollenname = 'admin')                                        AS admins,
+            SUM(r.Rollenname = 'employee')                                     AS mitarbeiter,
+            SUM(r.Rollenname = 'Kunde' OR r.Rollenname IS NULL)                AS kunden
+        FROM users u
+        LEFT JOIN users_has_Rollen uhr ON uhr.users_idusers = u.idusers
+        LEFT JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
+    ")->fetch();
+
+    // Letzte 10 User
+    $users = $pdo->query("
+        SELECT u.idusers, u.username, u.email,
+               LOWER(COALESCE(r.Rollenname, 'Kunde')) AS role
+        FROM users u
+        LEFT JOIN users_has_Rollen uhr ON uhr.users_idusers = u.idusers
+        LEFT JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
+        ORDER BY u.idusers DESC
         LIMIT 10
-    ");
-    $buchungen->execute([$userId]);
-    $buchungsliste = $buchungen->fetchAll();
-
-    $raeume = $pdo->query("
-        SELECT id, name, standort, kapazitaet
-        FROM Raeume WHERE aktiv = 1 ORDER BY name
     ")->fetchAll();
 
+    // News-Statistiken
+    $newsStats = $pdo->query("
+    SELECT
+        COUNT(*)                        AS gesamt,
+        SUM(status = 'published')       AS veroeffentlicht,
+        SUM(status = 'draft')           AS entwurf
+    FROM news_posts
+")->fetch();
+
+    // Letzte 8 News-Beiträge
+    $newsList = $pdo->query("
+    SELECT id, title, slug, status,
+           LEFT(content, 120)   AS excerpt,
+           published_at,
+           created_at
+    FROM news_posts
+    ORDER BY id DESC
+    LIMIT 8
+")->fetchAll();
+
 } catch (Throwable $e) {
-    $s             = ['gesamt'=>0,'anstehend'=>0,'abgeschlossen'=>0,'storniert'=>0];
-    $buchungsliste = [];
-    $raeume        = [];
-    $dbError       = true;
+    $userStats = ['gesamt' => 0, 'admins' => 0, 'mitarbeiter' => 0, 'kunden' => 0];
+    $newsStats = ['gesamt' => 0, 'veroeffentlicht' => 0, 'entwurf' => 0];
+    $users = [];
+    $newsList = [];
+    $dbError = $e->getMessage();
 }
 
-function statusBadge(string $status): string {
-    return match($status) {
-        'bestaetigt'    => '<span class="db-badge db-badge--green">Bestätigt</span>',
-        'ausstehend'    => '<span class="db-badge db-badge--yellow">Ausstehend</span>',
-        'abgeschlossen' => '<span class="db-badge db-badge--gray">Abgeschlossen</span>',
-        'storniert'     => '<span class="db-badge db-badge--red">Storniert</span>',
-        default         => '<span class="db-badge db-badge--gray">'.htmlspecialchars($status).'</span>',
+function roleBadge(string $role): string
+{
+    return match ($role) {
+        'admin' => '<span class="db-badge db-badge--red">Admin</span>',
+        'employee' => '<span class="db-badge db-badge--blue">Mitarbeiter</span>',
+        default => '<span class="db-badge db-badge--gray">Kunde</span>',
     };
-}
-
-function formatDt(string $dt): string {
-    $d = new DateTimeImmutable($dt);
-    $w = ['So','Mo','Di','Mi','Do','Fr','Sa'];
-    return $w[(int)$d->format('w')].', '.$d->format('d.m.Y').' · '.$d->format('H:i').' Uhr';
 }
 ?>
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard – BookIT</title>
+    <title>Admin Dashboard – BookIT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="/assets/css/index.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-    :root{--db-green:#118075;--db-green-pale:#e6f4f2;--db-blue:#4D8496;--db-ink:#1e293b;--db-ink-2:#475569;--db-ink-3:#94a3b8;--db-bg:#f8fafc;--db-white:#fff;--db-border:#e2e8f0;--db-radius:14px;--db-shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);--db-shadow-md:0 4px 20px rgba(15,23,42,.08);}
-    body{background:var(--db-bg);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--db-ink);}
+        :root {
+            --db-green: #118075;
+            --db-green-pale: #e6f4f2;
+            --db-blue: #4D8496;
+            --db-blue-pale: #e8f2f6;
+            --db-red: #80111B;
+            --db-ink: #1e293b;
+            --db-ink-2: #475569;
+            --db-ink-3: #94a3b8;
+            --db-bg: #f8fafc;
+            --db-white: #fff;
+            --db-border: #e2e8f0;
+            --db-radius: 14px;
+            --db-shadow: 0 1px 3px rgba(15, 23, 42, .06), 0 1px 2px rgba(15, 23, 42, .04);
+            --db-shadow-md: 0 4px 20px rgba(15, 23, 42, .08);
+        }
 
-    .db-header{background:linear-gradient(135deg,var(--db-green),var(--db-blue));padding:48px 0 56px;position:relative;overflow:hidden;}
-    .db-header::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;}
-    .db-header .container{position:relative;z-index:1;}
-    .db-header__greeting{font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:.4rem;}
-    .db-header h1{font-size:clamp(1.6rem,3vw,2.2rem);font-weight:700;color:#fff;letter-spacing:-.025em;margin:0 0 .4rem;}
-    .db-header p{color:rgba(255,255,255,.72);margin:0;font-size:.92rem;}
-    .db-header__role{display:inline-flex;align-items:center;gap:.35rem;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:.75rem;font-weight:600;padding:.3rem .8rem;border-radius:999px;letter-spacing:.04em;margin-top:.75rem;}
-    .db-new-booking-btn{display:inline-flex;align-items:center;gap:.4rem;background:#fff;color:var(--db-green);font-weight:700;font-size:.88rem;padding:.65rem 1.4rem;border-radius:9px;text-decoration:none;transition:all .2s;box-shadow:0 2px 12px rgba(0,0,0,.12);}
-    .db-new-booking-btn:hover{background:var(--db-green-pale);color:var(--db-green);transform:translateY(-1px);}
+        body {
+            background: var(--db-bg);
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: var(--db-ink);
+        }
 
-    .db-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin:-28px 0 2rem;position:relative;z-index:2;}
-    .db-stat{background:var(--db-white);border:1px solid var(--db-border);border-radius:var(--db-radius);padding:1.25rem 1.4rem;box-shadow:var(--db-shadow-md);display:flex;align-items:center;gap:1rem;}
-    .db-stat__icon{width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
-    .db-stat__icon--green{background:var(--db-green-pale);color:var(--db-green);}
-    .db-stat__icon--blue{background:#e8f2f6;color:var(--db-blue);}
-    .db-stat__icon--teal{background:#d1fae5;color:#059669;}
-    .db-stat__icon--red{background:#fef2f2;color:#dc2626;}
-    .db-stat__num{font-size:1.75rem;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--db-ink);}
-    .db-stat__label{font-size:.75rem;color:var(--db-ink-3);font-weight:500;margin-top:.15rem;}
+        /* Header */
+        .db-header {
+            background: linear-gradient(135deg, #80111B, #4D8496);
+            padding: 48px 0 56px;
+            position: relative;
+            overflow: hidden;
+        }
 
-    .db-card{background:var(--db-white);border:1px solid var(--db-border);border-radius:var(--db-radius);box-shadow:var(--db-shadow);overflow:hidden;}
-    .db-card__head{padding:1.1rem 1.4rem;border-bottom:1px solid var(--db-border);display:flex;align-items:center;justify-content:space-between;gap:.75rem;}
-    .db-card__title{font-size:.95rem;font-weight:700;color:var(--db-ink);margin:0;display:flex;align-items:center;gap:.5rem;}
-    .db-card__title i{color:var(--db-green);font-size:.9rem;}
+        .db-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+        }
 
-    .db-booking{padding:1.1rem 1.4rem;border-bottom:1px solid var(--db-border);display:grid;grid-template-columns:1fr auto;gap:.5rem 1rem;align-items:start;transition:background .15s;}
-    .db-booking:last-child{border-bottom:none;}
-    .db-booking:hover{background:#fafcff;}
-    .db-booking__room{font-size:.95rem;font-weight:700;color:var(--db-ink);margin-bottom:.2rem;}
-    .db-booking__meta{font-size:.8rem;color:var(--db-ink-3);display:flex;flex-wrap:wrap;gap:.5rem .9rem;}
-    .db-booking__meta span{display:flex;align-items:center;gap:.25rem;}
-    .db-booking__actions{display:flex;flex-direction:column;gap:.35rem;align-items:flex-end;}
+        .db-header .container {
+            position: relative;
+            z-index: 1;
+        }
 
-    .db-badge{display:inline-block;font-size:.7rem;font-weight:700;padding:.2rem .65rem;border-radius:999px;border:1px solid transparent;letter-spacing:.03em;white-space:nowrap;}
-    .db-badge--green{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:#16a34a;}
-    .db-badge--yellow{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#d97706;}
-    .db-badge--gray{background:rgba(100,116,139,.1);border-color:rgba(100,116,139,.25);color:#64748b;}
-    .db-badge--red{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2);color:#dc2626;}
+        .db-header__label {
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, .6);
+            margin-bottom: .4rem;
+        }
 
-    .db-action{display:flex;align-items:center;gap:.9rem;padding:1rem 1.4rem;border-bottom:1px solid var(--db-border);text-decoration:none;color:var(--db-ink);transition:background .15s;}
-    .db-action:last-child{border-bottom:none;}
-    .db-action:hover{background:var(--db-green-pale);color:var(--db-ink);}
-    .db-action__icon{width:40px;height:40px;background:var(--db-green-pale);color:var(--db-green);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;transition:background .15s,color .15s;}
-    .db-action:hover .db-action__icon{background:var(--db-green);color:#fff;}
-    .db-action__label{font-size:.88rem;font-weight:600;}
-    .db-action__sub{font-size:.75rem;color:var(--db-ink-3);margin-top:.1rem;}
-    .db-action__arrow{margin-left:auto;color:var(--db-ink-3);font-size:.85rem;}
+        .db-header h1 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -.025em;
+            margin: 0 0 .4rem;
+        }
 
-    .db-room{display:flex;align-items:center;gap:.85rem;padding:.9rem 1.4rem;border-bottom:1px solid var(--db-border);}
-    .db-room:last-child{border-bottom:none;}
-    .db-room__icon{width:36px;height:36px;background:var(--db-green-pale);color:var(--db-green);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;}
-    .db-room__name{font-size:.88rem;font-weight:600;color:var(--db-ink);}
-    .db-room__sub{font-size:.75rem;color:var(--db-ink-3);margin-top:.1rem;}
-    .db-room__cap{margin-left:auto;font-size:.75rem;font-weight:600;color:var(--db-ink-3);display:flex;align-items:center;gap:.25rem;}
+        .db-header p {
+            color: rgba(255, 255, 255, .7);
+            margin: 0;
+            font-size: .9rem;
+        }
 
-    .db-empty{padding:3rem 1.5rem;text-align:center;color:var(--db-ink-3);}
-    .db-empty i{font-size:2rem;display:block;margin-bottom:.6rem;}
-    .db-empty p{font-size:.85rem;margin:0;}
+        .db-header__badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            background: rgba(255, 255, 255, .15);
+            border: 1px solid rgba(255, 255, 255, .2);
+            color: #fff;
+            font-size: .72rem;
+            font-weight: 700;
+            padding: .3rem .85rem;
+            border-radius: 999px;
+            letter-spacing: .05em;
+            margin-top: .75rem;
+        }
 
-    .db-btn-sm{font-size:.75rem;font-weight:600;padding:.28rem .75rem;border-radius:6px;border:1.5px solid var(--db-border);background:transparent;color:var(--db-ink-2);cursor:pointer;text-decoration:none;display:inline-block;transition:all .15s;white-space:nowrap;}
-    .db-btn-sm:hover{border-color:var(--db-green);color:var(--db-green);}
-    .db-btn-sm--danger:hover{border-color:#dc2626;color:#dc2626;}
+        /* Stat cards */
+        .db-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin: -28px 0 2rem;
+            position: relative;
+            z-index: 2;
+        }
 
-    @media(max-width:900px){.db-stats{grid-template-columns:repeat(2,1fr);}}
-    @media(max-width:576px){.db-stats{grid-template-columns:1fr 1fr;}.db-header{padding:36px 0 56px;}.db-booking{grid-template-columns:1fr;}.db-booking__actions{flex-direction:row;}}
+        .db-stat {
+            background: var(--db-white);
+            border: 1px solid var(--db-border);
+            border-radius: var(--db-radius);
+            padding: 1.2rem 1.35rem;
+            box-shadow: var(--db-shadow-md);
+            display: flex;
+            align-items: center;
+            gap: .9rem;
+        }
+
+        .db-stat__icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+
+        .db-stat__icon--red {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .db-stat__icon--green {
+            background: var(--db-green-pale);
+            color: var(--db-green);
+        }
+
+        .db-stat__icon--blue {
+            background: var(--db-blue-pale);
+            color: var(--db-blue);
+        }
+
+        .db-stat__icon--gray {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .db-stat__icon--teal {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .db-stat__icon--amber {
+            background: #fffbeb;
+            color: #d97706;
+        }
+
+        .db-stat__num {
+            font-size: 1.7rem;
+            font-weight: 700;
+            letter-spacing: -.04em;
+            line-height: 1;
+            color: var(--db-ink);
+        }
+
+        .db-stat__label {
+            font-size: .73rem;
+            color: var(--db-ink-3);
+            font-weight: 500;
+            margin-top: .12rem;
+        }
+
+        /* Card */
+        .db-card {
+            background: var(--db-white);
+            border: 1px solid var(--db-border);
+            border-radius: var(--db-radius);
+            box-shadow: var(--db-shadow);
+            overflow: hidden;
+        }
+
+        .db-card__head {
+            padding: 1rem 1.35rem;
+            border-bottom: 1px solid var(--db-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .db-card__title {
+            font-size: .92rem;
+            font-weight: 700;
+            color: var(--db-ink);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: .45rem;
+        }
+
+        .db-card__title i {
+            font-size: .85rem;
+        }
+
+        .db-card__title i.icon-user {
+            color: var(--db-blue);
+        }
+
+        .db-card__title i.icon-news {
+            color: var(--db-green);
+        }
+
+        /* Table rows */
+        .db-row {
+            display: grid;
+            align-items: center;
+            padding: .85rem 1.35rem;
+            border-bottom: 1px solid var(--db-border);
+            transition: background .15s;
+            gap: .75rem;
+        }
+
+        .db-row:last-child {
+            border-bottom: none;
+        }
+
+        .db-row:hover {
+            background: #fafcff;
+        }
+
+        .db-row--user {
+            grid-template-columns: 2rem 1fr auto;
+        }
+
+        .db-row--news {
+            grid-template-columns: 1fr auto;
+        }
+
+        .db-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--db-blue-pale);
+            color: var(--db-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .8rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .db-row__name {
+            font-size: .875rem;
+            font-weight: 600;
+            color: var(--db-ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .db-row__sub {
+            font-size: .75rem;
+            color: var(--db-ink-3);
+            margin-top: .1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .db-row__news-title {
+            font-size: .875rem;
+            font-weight: 600;
+            color: var(--db-ink);
+        }
+
+        .db-row__news-excerpt {
+            font-size: .75rem;
+            color: var(--db-ink-3);
+            margin-top: .1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Badges */
+        .db-badge {
+            display: inline-block;
+            font-size: .68rem;
+            font-weight: 700;
+            padding: .18rem .6rem;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            letter-spacing: .03em;
+            white-space: nowrap;
+        }
+
+        .db-badge--green {
+            background: rgba(34, 197, 94, .1);
+            border-color: rgba(34, 197, 94, .3);
+            color: #16a34a;
+        }
+
+        .db-badge--blue {
+            background: rgba(77, 132, 150, .12);
+            border-color: rgba(77, 132, 150, .3);
+            color: var(--db-blue);
+        }
+
+        .db-badge--gray {
+            background: rgba(100, 116, 139, .1);
+            border-color: rgba(100, 116, 139, .2);
+            color: #64748b;
+        }
+
+        .db-badge--red {
+            background: rgba(220, 38, 38, .08);
+            border-color: rgba(220, 38, 38, .2);
+            color: #dc2626;
+        }
+
+        .db-badge--amber {
+            background: rgba(245, 158, 11, .1);
+            border-color: rgba(245, 158, 11, .3);
+            color: #d97706;
+        }
+
+        .db-empty {
+            padding: 2.5rem;
+            text-align: center;
+            color: var(--db-ink-3);
+        }
+
+        .db-empty i {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: .5rem;
+        }
+
+        .db-empty p {
+            font-size: .82rem;
+            margin: 0;
+        }
+
+        @media(max-width:900px) {
+            .db-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media(max-width:576px) {
+            .db-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .db-header {
+                padding: 36px 0 56px;
+            }
+        }
     </style>
 </head>
+
 <body>
 
-<?php require __DIR__ . '/../views/partials/navbar.php'; ?>
+    <?php require $appRoot . '/views/partials/navbar.php'; ?>
 
-<header class="db-header">
-    <div class="container">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-                <div class="db-header__greeting">Mein Dashboard</div>
-                <h1>Willkommen, <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>!</h1>
-                <p>Verwalten Sie Ihre Raumreservierungen und Einstellungen.</p>
-                <div class="db-header__role">
-                    <i class="bi bi-person-badge"></i>
-                    <?= $userRole === 'employee' ? 'Mitarbeiter' : 'Kunde' ?>
+    <!-- Header -->
+    <header class="db-header">
+        <div class="container">
+            <div class="db-header__label">Administration</div>
+            <h1>Admin Dashboard</h1>
+            <p>Übersicht über alle Benutzer und News-Beiträge.</p>
+            <div class="db-header__badge">
+                <i class="bi bi-shield-fill-check"></i> Eingeloggt als
+                <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
+            </div>
+        </div>
+    </header>
+
+    <main class="container py-4">
+
+        <?php if (isset($dbError)): ?>
+            <div class="alert alert-warning d-flex align-items-center gap-2 mb-4"
+                style="border-radius:10px;font-size:.88rem;">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <div><strong>DB-Fehler:</strong> <?= htmlspecialchars($dbError) ?></div>
+            </div>
+        <?php endif; ?>
+
+        <!-- Stat cards -->
+        <div class="db-stats">
+            <div class="db-stat">
+                <div class="db-stat__icon db-stat__icon--blue"><i class="bi bi-people-fill"></i></div>
+                <div>
+                    <div class="db-stat__num"><?= (int) ($userStats['gesamt'] ?? 0) ?></div>
+                    <div class="db-stat__label">Benutzer gesamt</div>
                 </div>
             </div>
-            <a href="/mock_booking.php" class="db-new-booking-btn">
-                <i class="bi bi-plus-circle-fill"></i> Neue Buchung
-            </a>
-        </div>
-    </div>
-</header>
-
-<main class="container py-4">
-
-    <?php if (isset($dbError)): ?>
-        <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" style="border-radius:10px;">
-            <i class="bi bi-exclamation-triangle-fill"></i>
-            <div><strong>Datenbank nicht verbunden.</strong>
-            Führe <code>migration_buchungen.sql</code> aus um echte Daten zu sehen.</div>
-        </div>
-    <?php endif; ?>
-
-    <div class="db-stats">
-        <div class="db-stat">
-            <div class="db-stat__icon db-stat__icon--green"><i class="bi bi-calendar-check"></i></div>
-            <div><div class="db-stat__num"><?= (int)($s['gesamt']??0) ?></div><div class="db-stat__label">Gesamt</div></div>
-        </div>
-        <div class="db-stat">
-            <div class="db-stat__icon db-stat__icon--blue"><i class="bi bi-clock"></i></div>
-            <div><div class="db-stat__num"><?= (int)($s['anstehend']??0) ?></div><div class="db-stat__label">Anstehend</div></div>
-        </div>
-        <div class="db-stat">
-            <div class="db-stat__icon db-stat__icon--teal"><i class="bi bi-check-circle"></i></div>
-            <div><div class="db-stat__num"><?= (int)($s['abgeschlossen']??0) ?></div><div class="db-stat__label">Abgeschlossen</div></div>
-        </div>
-        <div class="db-stat">
-            <div class="db-stat__icon db-stat__icon--red"><i class="bi bi-x-circle"></i></div>
-            <div><div class="db-stat__num"><?= (int)($s['storniert']??0) ?></div><div class="db-stat__label">Storniert</div></div>
-        </div>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-lg-8">
-            <div class="db-card">
-                <div class="db-card__head">
-                    <h2 class="db-card__title"><i class="bi bi-calendar3"></i> Meine Buchungen</h2>
-                    <a href="/mock_booking.php" class="db-btn-sm"><i class="bi bi-plus"></i> Neu</a>
+            <div class="db-stat">
+                <div class="db-stat__icon db-stat__icon--red"><i class="bi bi-shield-fill-check"></i></div>
+                <div>
+                    <div class="db-stat__num"><?= (int) ($userStats['admins'] ?? 0) ?></div>
+                    <div class="db-stat__label">Admins</div>
                 </div>
-                <?php if (empty($buchungsliste)): ?>
-                    <div class="db-empty">
-                        <i class="bi bi-calendar-x"></i>
-                        <p>Keine Buchungen vorhanden.<br>
-                           <a href="/mock_booking.php" style="color:var(--db-green);font-weight:600;">Jetzt ersten Raum buchen →</a></p>
+            </div>
+            <div class="db-stat">
+                <div class="db-stat__icon db-stat__icon--green"><i class="bi bi-newspaper"></i></div>
+                <div>
+                    <div class="db-stat__num"><?= (int) ($newsStats['gesamt'] ?? 0) ?></div>
+                    <div class="db-stat__label">News gesamt</div>
+                </div>
+            </div>
+            <div class="db-stat">
+                <div class="db-stat__icon db-stat__icon--teal"><i class="bi bi-check-circle-fill"></i></div>
+                <div>
+                    <div class="db-stat__num"><?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?></div>
+                    <div class="db-stat__label">Veröffentlicht</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+
+            <!-- Benutzer-Tabelle -->
+            <div class="col-lg-6">
+                <div class="db-card">
+                    <div class="db-card__head">
+                        <h2 class="db-card__title">
+                            <i class="bi bi-people-fill icon-user"></i> Letzte Benutzer
+                        </h2>
+                        <span style="font-size:.75rem;color:var(--db-ink-3);font-weight:600;">
+                            <?= (int) ($userStats['gesamt'] ?? 0) ?> gesamt
+                        </span>
                     </div>
-                <?php else: ?>
-                    <?php foreach ($buchungsliste as $b): ?>
-                        <div class="db-booking">
-                            <div>
-                                <div class="db-booking__room"><?= htmlspecialchars($b['raum_name']) ?></div>
-                                <div class="db-booking__meta">
-                                    <span><i class="bi bi-calendar"></i> <?= htmlspecialchars(formatDt($b['start_zeit'])) ?></span>
-                                    <?php if ($b['raum_standort']): ?>
-                                        <span><i class="bi bi-geo-alt"></i> <?= htmlspecialchars($b['raum_standort']) ?></span>
+
+                    <?php if (empty($users)): ?>
+                        <div class="db-empty"><i class="bi bi-people"></i>
+                            <p>Keine Benutzer gefunden.</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($users as $u): ?>
+                            <div class="db-row db-row--user">
+                                <div class="db-avatar">
+                                    <?= strtoupper(mb_substr($u['username'] ?: $u['email'], 0, 1)) ?>
+                                </div>
+                                <div style="min-width:0;">
+                                    <div class="db-row__name">
+                                        <?= htmlspecialchars($u['username'] ?: '—') ?>
+                                    </div>
+                                    <div class="db-row__sub"><?= htmlspecialchars($u['email']) ?></div>
+                                </div>
+                                <div style="flex-shrink:0;">
+                                    <?= roleBadge($u['role'] ?? 'Kunde') ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- User-Aufschlüsselung -->
+                <div class="db-card mt-3">
+                    <div class="db-card__head">
+                        <h2 class="db-card__title"><i class="bi bi-bar-chart-fill icon-user"></i> Rollen-Aufschlüsselung
+                        </h2>
+                    </div>
+                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
+                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
+                            <i class="bi bi-person-fill" style="color:#64748b;"></i> Kunden
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.6rem;">
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
+                                <?= (int) ($userStats['kunden'] ?? 0) ?></div>
+                            <span class="db-badge db-badge--gray">Kunde</span>
+                        </div>
+                    </div>
+                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
+                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
+                            <i class="bi bi-person-badge-fill" style="color:var(--db-blue);"></i> Mitarbeiter
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.6rem;">
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
+                                <?= (int) ($userStats['mitarbeiter'] ?? 0) ?></div>
+                            <span class="db-badge db-badge--blue">employee</span>
+                        </div>
+                    </div>
+                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
+                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
+                            <i class="bi bi-shield-fill-check" style="color:#dc2626;"></i> Admins
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.6rem;">
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
+                                <?= (int) ($userStats['admins'] ?? 0) ?></div>
+                            <span class="db-badge db-badge--red">admin</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- News-Tabelle -->
+            <div class="col-lg-6">
+                <div class="db-card">
+                    <div class="db-card__head">
+                        <h2 class="db-card__title">
+                            <i class="bi bi-newspaper icon-news"></i> News-Beiträge
+                        </h2>
+                        <span style="font-size:.75rem;color:var(--db-ink-3);font-weight:600;">
+                            <?= (int) ($newsStats['gesamt'] ?? 0) ?> gesamt
+                        </span>
+                    </div>
+
+                    <?php if (empty($newsList)): ?>
+                        <div class="db-empty"><i class="bi bi-newspaper"></i>
+                            <p>Keine News-Beiträge vorhanden.</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($newsList as $n): ?>
+                            <?php
+                            $published = $n['status'] === 'published';
+                            $dateStr = !empty($n['published_at'])
+                                ? date('d.m.Y', strtotime($n['published_at']))
+                                : date('d.m.Y', strtotime($n['created_at']));
+                            ?>
+                            <div class="db-row db-row--news">
+                                <div style="min-width:0;">
+                                    <div class="db-row__news-title"><?= htmlspecialchars($n['title']) ?></div>
+                                    <?php if (!empty($n['excerpt'])): ?>
+                                        <div class="db-row__news-excerpt"><?= htmlspecialchars($n['excerpt']) ?></div>
                                     <?php endif; ?>
-                                    <?php
-                                        $start = new DateTimeImmutable($b['start_zeit']);
-                                        $end   = new DateTimeImmutable($b['end_zeit']);
-                                        $diff  = $start->diff($end);
-                                        $dur   = ($diff->h ? $diff->h.' Std.' : '').($diff->i ? ' '.$diff->i.' Min.' : '');
-                                    ?>
-                                    <?php if (trim($dur)): ?>
-                                        <span><i class="bi bi-hourglass-split"></i> <?= trim($dur) ?></span>
+                                    <div style="font-size:.72rem;color:var(--db-ink-3);margin-top:.25rem;">
+                                        <i class="bi bi-calendar3"></i> <?= $dateStr ?>
+                                    </div>
+                                </div>
+                                <div style="flex-shrink:0;">
+                                    <?php if ($published): ?>
+                                        <span class="db-badge db-badge--green">Online</span>
+                                    <?php else: ?>
+                                        <span class="db-badge db-badge--amber">Entwurf</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div class="db-booking__actions">
-                                <?= statusBadge($b['status']) ?>
-                                <?php if (in_array($b['status'],['ausstehend','bestaetigt']) && $b['start_zeit'] > date('Y-m-d H:i:s')): ?>
-                                    <a href="/mock_booking.php?edit=<?= $b['id'] ?>" class="db-btn-sm">Ändern</a>
-                                    <a href="#" class="db-btn-sm db-btn-sm--danger">Stornieren</a>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <div class="col-lg-4 d-flex flex-column gap-4">
-            <div class="db-card">
-                <div class="db-card__head">
-                    <h2 class="db-card__title"><i class="bi bi-lightning-charge"></i> Schnellzugriff</h2>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
-                <a href="/mock_booking.php" class="db-action">
-                    <div class="db-action__icon"><i class="bi bi-calendar-plus"></i></div>
-                    <div><div class="db-action__label">Neue Buchung</div><div class="db-action__sub">Raum suchen &amp; reservieren</div></div>
-                    <i class="bi bi-chevron-right db-action__arrow"></i>
-                </a>
-                <a href="/mock_checkin.php" class="db-action">
-                    <div class="db-action__icon"><i class="bi bi-qr-code-scan"></i></div>
-                    <div><div class="db-action__label">Check-in</div><div class="db-action__sub">QR-Code scannen</div></div>
-                    <i class="bi bi-chevron-right db-action__arrow"></i>
-                </a>
-                <a href="/customer-news.php" class="db-action">
-                    <div class="db-action__icon"><i class="bi bi-newspaper"></i></div>
-                    <div><div class="db-action__label">News</div><div class="db-action__sub">Aktuelle Mitteilungen</div></div>
-                    <i class="bi bi-chevron-right db-action__arrow"></i>
-                </a>
-                <?php if ($userRole === 'employee'): ?>
-                <a href="/internal-news.php" class="db-action">
-                    <div class="db-action__icon"><i class="bi bi-shield-lock"></i></div>
-                    <div><div class="db-action__label">Interne News</div><div class="db-action__sub">Nur für Mitarbeiter</div></div>
-                    <i class="bi bi-chevron-right db-action__arrow"></i>
-                </a>
-                <?php endif; ?>
-            </div>
 
-            <div class="db-card">
-                <div class="db-card__head">
-                    <h2 class="db-card__title"><i class="bi bi-door-open"></i> Verfügbare Räume</h2>
-                </div>
-                <?php if (empty($raeume)): ?>
-                    <div class="db-empty"><i class="bi bi-building"></i><p>Noch keine Räume angelegt.</p></div>
-                <?php else: ?>
-                    <?php foreach ($raeume as $r): ?>
-                        <div class="db-room">
-                            <div class="db-room__icon"><i class="bi bi-building"></i></div>
-                            <div>
-                                <div class="db-room__name"><?= htmlspecialchars($r['name']) ?></div>
-                                <?php if ($r['standort']): ?>
-                                    <div class="db-room__sub"><?= htmlspecialchars($r['standort']) ?></div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="db-room__cap"><i class="bi bi-people"></i> <?= (int)$r['kapazitaet'] ?></div>
+                <!-- News-Aufschlüsselung -->
+                <div class="db-card mt-3">
+                    <div class="db-card__head">
+                        <h2 class="db-card__title"><i class="bi bi-bar-chart-fill icon-news"></i> News-Status</h2>
+                    </div>
+                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
+                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
+                            <i class="bi bi-check-circle-fill" style="color:#16a34a;"></i> Veröffentlicht
                         </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                        <div style="display:flex;align-items:center;gap:.6rem;">
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
+                                <?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?></div>
+                            <span class="db-badge db-badge--green">Online</span>
+                        </div>
+                    </div>
+                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
+                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
+                            <i class="bi bi-pencil-fill" style="color:#d97706;"></i> Entwürfe
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.6rem;">
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
+                                <?= (int) ($newsStats['entwurf'] ?? 0) ?></div>
+                            <span class="db-badge db-badge--amber">Entwurf</span>
+                        </div>
+                    </div>
+                </div>
             </div>
+
         </div>
-    </div>
+    </main>
 
-</main>
+    <footer style="background:#1e293b;color:rgba(255,255,255,.4);padding:2rem 0;text-align:center;margin-top:3rem;">
+        <div class="container">
+            <p style="font-size:.8rem;margin:0;">&copy; 2026 BookIT Admin &nbsp;·&nbsp;
+                <a href="/about.php" style="color:rgba(255,255,255,.4);">Über uns</a> &nbsp;·&nbsp;
+                <a href="/impressum.php" style="color:rgba(255,255,255,.4);">Impressum</a>
+            </p>
+        </div>
+    </footer>
 
-<footer style="background:#1e293b;color:rgba(255,255,255,.45);padding:2rem 0;text-align:center;margin-top:3rem;">
-    <div class="container">
-        <p style="font-size:.82rem;margin:0;">&copy; 2026 BookIT &nbsp;·&nbsp;
-            <a href="/about.php" style="color:rgba(255,255,255,.45);">Über uns</a> &nbsp;·&nbsp;
-            <a href="/impressum.php" style="color:rgba(255,255,255,.45);">Impressum</a></p>
-    </div>
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
