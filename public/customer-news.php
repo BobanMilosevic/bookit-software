@@ -1,176 +1,448 @@
 <?php
-require __DIR__ . '/../app/auth/bootstrap.php';
+declare(strict_types=1);
 
-require __DIR__ . '/../app/auth/require_login.php';
+$appRoot = dirname(__DIR__);
+require $appRoot . '/app/auth/bootstrap.php';
+require $appRoot . '/app/auth/require_login.php';
+require $appRoot . '/app/db.php';
+
+/* ── News aus DB laden ─────────────────────────────────── */
+$posts = [];
+$error = null;
+
+try {
+    $pdo = db();
+    $stmt = $pdo->prepare("
+        SELECT id, title, slug, content, published_at, created_at
+        FROM news_posts
+        WHERE status = 'published'
+          AND type = 'public'
+        ORDER BY COALESCE(published_at, created_at) DESC
+        LIMIT 20
+    ");
+    $stmt->execute();
+    $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $error = $e->getMessage();
+}
+
+function formatDate(string $dateStr): string {
+    $months = ['Januar','Februar','März','April','Mai','Juni',
+               'Juli','August','September','Oktober','November','Dezember'];
+    $ts = strtotime($dateStr);
+    return intval(date('j', $ts)) . '. ' . $months[intval(date('n', $ts)) - 1] . ' ' . date('Y', $ts);
+}
+
+function excerpt(string $content, int $words = 22): string {
+    $plain = strip_tags($content);
+    $arr   = preg_split('/\s+/', trim($plain));
+    if (count($arr) <= $words) return $plain;
+    return implode(' ', array_slice($arr, 0, $words)) . ' …';
+}
 ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kunden News - BookIT</title>
+    <title>News – BookIT</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/css/app.css">
+
+    <!-- Display font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,700;9..144,900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
     <style>
+        /* ── Tokens ──────────────────────────────────────── */
         :root {
-            --primary-color: #118075;
-            --secondary-color: #4D8496;
-            --accent-color: #80111B;
-            --light-bg: #f8fafc;
-            --dark-text: #1e293b;
+            --green:     #118075;
+            --green-mid: #0e6b62;
+            --blue:      #4D8496;
+            --red:       #80111B;
+            --ink:       #0f1c2e;
+            --ink-60:    #4a5568;
+            --ink-30:    #94a3b8;
+            --bg:        #f5f4f0;
+            --white:     #ffffff;
+            --border:    #e2e0da;
+            --radius:    16px;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--light-bg); color: var(--dark-text); overflow-x: hidden; }
-        .hero { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 80px 0; text-align: center; position: relative; overflow: hidden; transform: translateZ(0); }
-        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.3); z-index: 1; }
-        .hero > * { position: relative; z-index: 2; }
-        .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>') repeat; opacity: 0.1; animation: float 20s ease-in-out infinite; }
-        .hero h1 { font-size: 3rem; font-weight: 700; margin-bottom: 1rem; }
-        .logo { font-size: 3em; font-weight: bold; margin-bottom: 20px; }
-        .news-card { margin: 20px 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: none; padding: 2rem; transform: translateY(50px); transition: all 0.6s ease; }
-        .news-card.visible { opacity: 1; transform: translateY(0); }
-        .news-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
-        .news-card .card-title { color: var(--primary-color); font-weight: 600; }
-        .news-card .card-text { color: var(--dark-text); }
-        .news-date { color: var(--secondary-color); font-size: 0.9rem; font-weight: 500; }
-        .customer-badge { background: var(--primary-color); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-block; margin-bottom: 1rem; }
-        .btn { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 12px; font-weight: 600; padding: 0.75rem 2rem; position: relative; overflow: hidden; }
-        .btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
-        .btn:hover::before { left: 100%; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border: none; }
-        footer { background: var(--dark-text); color: white; padding: 3rem 0; text-align: center; margin-top: 5rem; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeInUp 0.8s ease-out; }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Page header ─────────────────────────────────── */
+        .news-header {
+            background: var(--green);
+            color: var(--white);
+            padding: 72px 0 56px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .news-header__noise {
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(ellipse 80% 60% at 80% -10%, rgba(77,132,150,.55) 0%, transparent 70%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .news-header .container { position: relative; z-index: 1; }
+
+        .news-header__eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            font-family: 'DM Sans', sans-serif;
+            font-size: .72rem;
+            font-weight: 600;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,.65);
+            margin-bottom: 1rem;
+        }
+
+        .news-header h1 {
+            font-family: 'Fraunces', serif;
+            font-size: clamp(2.6rem, 5vw, 4rem);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -.025em;
+            margin-bottom: 1rem;
+        }
+
+        .news-header p {
+            font-size: 1.05rem;
+            color: rgba(255,255,255,.75);
+            max-width: 520px;
+            line-height: 1.65;
+        }
+
+        /* ── Layout ──────────────────────────────────────── */
+        .news-body { padding: 56px 0 96px; }
+
+        /* ── Featured (first post) ───────────────────────── */
+        .news-featured {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            background: var(--white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(15,28,46,.07), 0 12px 32px rgba(15,28,46,.06);
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity .7s ease, transform .7s ease;
+        }
+
+        .news-featured.visible { opacity: 1; transform: none; }
+
+        .news-featured__visual {
+            background: linear-gradient(135deg, var(--green), var(--blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 280px;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .news-featured__visual::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ccircle cx='60' cy='60' r='56' stroke='rgba(255,255,255,.07)' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='60' cy='60' r='38' stroke='rgba(255,255,255,.05)' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='60' cy='60' r='20' stroke='rgba(255,255,255,.04)' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") center/200px repeat;
+            opacity: .4;
+        }
+
+        .news-featured__icon {
+            font-size: 4rem;
+            color: rgba(255,255,255,.8);
+            position: relative;
+            z-index: 1;
+        }
+
+        .news-featured__body {
+            padding: 2.5rem 2.8rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .news-featured__label {
+            font-size: .7rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: .75rem;
+        }
+
+        .news-featured__title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.65rem;
+            font-weight: 700;
+            line-height: 1.25;
+            color: var(--ink);
+            margin-bottom: .85rem;
+        }
+
+        .news-featured__excerpt {
+            font-size: .935rem;
+            color: var(--ink-60);
+            line-height: 1.7;
+            margin-bottom: 1.6rem;
+        }
+
+        .news-featured__meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: .78rem;
+            color: var(--ink-30);
+        }
+
+        /* ── Grid ────────────────────────────────────────── */
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .news-grid { grid-template-columns: repeat(2, 1fr); }
+            .news-featured { grid-template-columns: 1fr; }
+            .news-featured__visual { min-height: 180px; }
+        }
+
+        @media (max-width: 580px) {
+            .news-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Card ────────────────────────────────────────── */
+        .nc {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            box-shadow: 0 1px 3px rgba(15,28,46,.06), 0 4px 16px rgba(15,28,46,.04);
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity .55s ease, transform .55s ease, box-shadow .25s ease;
+            cursor: default;
+        }
+
+        .nc.visible { opacity: 1; transform: none; }
+
+        .nc:hover {
+            box-shadow: 0 4px 12px rgba(15,28,46,.1), 0 16px 40px rgba(15,28,46,.08);
+            transform: translateY(-3px);
+        }
+
+        .nc__date {
+            font-size: .72rem;
+            font-weight: 600;
+            letter-spacing: .06em;
+            color: var(--ink-30);
+        }
+
+        .nc__title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.12rem;
+            font-weight: 700;
+            line-height: 1.3;
+            color: var(--ink);
+        }
+
+        .nc__excerpt {
+            font-size: .875rem;
+            color: var(--ink-60);
+            line-height: 1.65;
+            flex: 1;
+        }
+
+        .nc__footer {
+            display: flex;
+            align-items: center;
+            padding-top: .5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .nc__btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--green);
+            text-decoration: none;
+            transition: gap .2s ease, color .2s ease;
+        }
+
+        .nc__btn:hover { gap: .65rem; color: var(--green-mid); }
+
+        /* ── Number accent ───────────────────────────────── */
+        .nc__num {
+            display: flex;
+            width: 36px;
+            height: 36px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: #e8f4f2;
+            font-size: .75rem;
+            font-weight: 700;
+            color: var(--green);
+            flex-shrink: 0;
+        }
+
+        /* ── Empty / Error ───────────────────────────────── */
+        .news-empty {
+            text-align: center;
+            padding: 5rem 2rem;
+            background: var(--white);
+            border-radius: var(--radius);
+            color: var(--ink-60);
+        }
+
+        .news-empty i {
+            font-size: 3rem;
+            color: var(--ink-30);
+            display: block;
+            margin-bottom: 1rem;
+        }
+
+        /* ── Footer ──────────────────────────────────────── */
+        .news-footer {
+            background: var(--ink);
+            color: rgba(255,255,255,.4);
+            text-align: center;
+            padding: 2.5rem 0;
+            font-size: .82rem;
+        }
+
+        .news-footer a { color: rgba(255,255,255,.5); text-decoration: none; }
+        .news-footer a:hover { color: rgba(255,255,255,.8); }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+
+    <?php require __DIR__ . '/../views/partials/navbar.php'; ?>
+
+    <!-- ── Header ─────────────────────────────────────────── -->
+    <header class="news-header">
+        <div class="news-header__noise"></div>
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="index.php">
-                <img src="logo.png" alt="BookIT Logo" style="height: 40px; margin-right: 10px;">
-                <span style="font-weight: 700; color: var(--primary-color);">BookIT</span>
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="index.php">Startseite</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="customer-news.php">News</a></li>
-                    <li class="nav-item" id="internalNewsLink" style="display: none;"><a class="nav-link" href="internal-news.php">Interne News</a></li>
-                    <li class="nav-item" id="loginLink"><a class="nav-link" href="login.php">Login</a></li>
-                    <li class="nav-item" id="logoutLink" style="display: none;"><a class="nav-link" href="logout.php">Logout</a></li>
-                </ul>
+            <div class="news-header__eyebrow">
+                <i class="bi bi-newspaper"></i>
+                BookIT Aktuell
             </div>
+            <h1>Was gibt es Neues?</h1>
+            <p>Die neuesten Entwicklungen, Updates und Ankündigungen direkt von uns.</p>
         </div>
-    </nav>
+    </header>
 
-    <section class="hero">
+    <!-- ── Content ────────────────────────────────────────── -->
+    <main class="news-body">
         <div class="container">
-            <div style="padding: 20px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
-                <img src="logo.png" alt="BookIT Logo" style="max-width: 250px; display: block; margin: 0 auto; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));">
-            </div>
-            <h1>Kunden News</h1>
-            <p class="lead">Bleiben Sie informiert über die neuesten Entwicklungen bei BookIT.</p>
-            <div class="customer-badge">Für alle Kunden</div>
+
+            <?php if ($error): ?>
+                <div class="news-empty">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Datenbankfehler</strong>
+                    <p style="margin-top:.5rem; font-size:.85rem;"><?= htmlspecialchars($error) ?></p>
+                </div>
+
+            <?php elseif (empty($posts)): ?>
+                <div class="news-empty">
+                    <i class="bi bi-newspaper"></i>
+                    <strong>Noch keine News vorhanden.</strong>
+                    <p style="margin-top:.5rem;">Schauen Sie bald wieder vorbei!</p>
+                </div>
+
+            <?php else: ?>
+
+                <?php $featured = array_shift($posts); ?>
+                <?php $featDate = formatDate($featured['published_at'] ?? $featured['created_at']); ?>
+
+                <!-- Featured Post -->
+                <div class="news-featured reveal-item">
+                    <div class="news-featured__visual">
+                        <i class="bi bi-megaphone-fill news-featured__icon"></i>
+                    </div>
+                    <div class="news-featured__body">
+                        <div class="news-featured__label">Neueste Meldung</div>
+                        <h2 class="news-featured__title"><?= htmlspecialchars($featured['title']) ?></h2>
+                        <p class="news-featured__excerpt"><?= htmlspecialchars(excerpt($featured['content'], 35)) ?></p>
+                        <div class="news-featured__meta">
+                            <span><i class="bi bi-calendar3"></i> <?= $featDate ?></span>
+                        </div>
+                    </div>
+                </div>
+
+                <?php if (!empty($posts)): ?>
+                <div class="news-grid">
+                    <?php foreach ($posts as $i => $post): ?>
+                        <?php $date = formatDate($post['published_at'] ?? $post['created_at']); ?>
+                        <article class="nc reveal-item" style="transition-delay: <?= ($i % 3) * 80 ?>ms;">
+                            <div style="display:flex; align-items:flex-start; gap:.75rem;">
+                                <div class="nc__num"><?= str_pad((string)($i + 1), 2, '0', STR_PAD_LEFT) ?></div>
+                                <div class="nc__date"><?= $date ?></div>
+                            </div>
+                            <h3 class="nc__title"><?= htmlspecialchars($post['title']) ?></h3>
+                            <p class="nc__excerpt"><?= htmlspecialchars(excerpt($post['content'])) ?></p>
+                            <div class="nc__footer">
+                                <a href="news-detail.php?slug=<?= urlencode($post['slug']) ?>" class="nc__btn">
+                                    Weiterlesen <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+
+            <?php endif; ?>
+
         </div>
-    </section>
+    </main>
 
-    <div class="container my-5 fade-in">
-        <div class="row">
-            <div class="col-md-8 mx-auto">
-                <div class="news-card">
-                    <div class="news-date mb-2">23. Februar 2026</div>
-                    <h5 class="card-title">Neue Funktionen verfügbar</h5>
-                    <p class="card-text">Wir haben unser Buchungssystem um mehrere neue Funktionen erweitert. Jetzt können Sie Räume für längere Zeiträume reservieren und automatische Erinnerungen einstellen.</p>
-                    <a href="mock_booking.php" class="btn btn-primary">Jetzt ausprobieren</a>
-                </div>
-
-                <div class="news-card">
-                    <div class="news-date mb-2">22. Februar 2026</div>
-                    <h5 class="card-title">Wartungsarbeiten am Wochenende</h5>
-                    <p class="card-text">Am kommenden Wochenende führen wir wichtige Wartungsarbeiten durch. Das System wird von 22:00 bis 06:00 Uhr nicht verfügbar sein.</p>
-                    <a href="#" class="btn btn-primary">Mehr Informationen</a>
-                </div>
-
-                <div class="news-card">
-                    <div class="news-date mb-2">21. Februar 2026</div>
-                    <h5 class="card-title">Neue Räume hinzugefügt</h5>
-                    <p class="card-text">Wir freuen uns, Ihnen drei neue Konferenzräume präsentieren zu können. Alle Räume sind mit modernster Technik ausgestattet.</p>
-                    <a href="#" class="btn btn-primary">Räume ansehen</a>
-                </div>
-
-                <div class="news-card">
-                    <div class="news-date mb-2">20. Februar 2026</div>
-                    <h5 class="card-title">Mobile App jetzt verfügbar</h5>
-                    <p class="card-text">Unsere neue mobile App ist jetzt im App Store und bei Google Play verfügbar. Verwalten Sie Ihre Buchungen unterwegs.</p>
-                    <a href="#" class="btn btn-primary">App herunterladen</a>
-                </div>
-
-                <div class="news-card">
-                    <div class="news-date mb-2">19. Februar 2026</div>
-                    <h5 class="card-title">Kundenfeedback-Umfrage</h5>
-                    <p class="card-text">Ihre Meinung ist uns wichtig! Nehmen Sie an unserer kurzen Umfrage teil und helfen Sie uns, unser Service zu verbessern.</p>
-                    <a href="#" class="btn btn-primary">Umfrage starten</a>
-                </div>
-
-                <div class="news-card">
-                    <div class="news-date mb-2">18. Februar 2026</div>
-                    <h5 class="card-title">Neue Zahlungsmethoden</h5>
-                    <p class="card-text">Ab sofort akzeptieren wir auch Kryptowährungen und digitale Wallets als Zahlungsmethoden für Ihre Buchungen.</p>
-                    <a href="#" class="btn btn-primary">Zahlungsmethoden anzeigen</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <footer>
+    <footer class="news-footer">
         <div class="container">
-            <p>&copy; 2026 BookIT. Alle Rechte vorbehalten.</p>
+            &copy; 2026 BookIT. Alle Rechte vorbehalten.
+            &nbsp;·&nbsp;<a href="impressum.php">Impressum</a>
+            &nbsp;·&nbsp;<a href="#contact">Kontakt</a>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Prüfe Login-Status und aktualisiere Navigation
-        const currentUser = JSON.parse(localStorage.getItem('bookit_current_user') || 'null');
-        
-        if (currentUser) {
-            // Benutzer ist eingeloggt
-            document.getElementById('loginLink').style.display = 'none';
-            document.getElementById('logoutLink').style.display = 'block';
-            
-            // Zeige internen News-Link nur für Mitarbeiter
-            if (currentUser.role === 'employee') {
-                document.getElementById('internalNewsLink').style.display = 'block';
-            }
-        } else {
-            // Benutzer ist nicht eingeloggt
-            document.getElementById('loginLink').style.display = 'block';
-            document.getElementById('logoutLink').style.display = 'none';
-            document.getElementById('internalNewsLink').style.display = 'none';
-        }
-
-        // Intersection Observer for scroll animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('visible');
+                    io.unobserve(e.target);
                 }
             });
-        }, observerOptions);
+        }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
 
-        // Observe elements
-        document.querySelectorAll('.news-card').forEach(card => {
-            observer.observe(card);
-        });
+        document.querySelectorAll('.reveal-item').forEach(el => io.observe(el));
     </script>
+
 </body>
 </html>

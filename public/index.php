@@ -274,7 +274,7 @@ require __DIR__ . '/../app/auth/bootstrap.php';
           <div class="contact__info">
             <div class="contact__info-item">
               <i class="bi bi-envelope"></i>
-              <span>hallo@bookit.at</span>
+              <span>office@bookit.at</span>
             </div>
             <div class="contact__info-item">
               <i class="bi bi-geo-alt"></i>

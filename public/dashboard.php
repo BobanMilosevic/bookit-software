@@ -580,7 +580,8 @@ function roleBadge(string $role): string
                         </div>
                         <div style="display:flex;align-items:center;gap:.6rem;">
                             <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($userStats['kunden'] ?? 0) ?></div>
+                                <?= (int) ($userStats['kunden'] ?? 0) ?>
+                            </div>
                             <span class="db-badge db-badge--gray">Kunde</span>
                         </div>
                     </div>
@@ -590,7 +591,8 @@ function roleBadge(string $role): string
                         </div>
                         <div style="display:flex;align-items:center;gap:.6rem;">
                             <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($userStats['mitarbeiter'] ?? 0) ?></div>
+                                <?= (int) ($userStats['mitarbeiter'] ?? 0) ?>
+                            </div>
                             <span class="db-badge db-badge--blue">employee</span>
                         </div>
                     </div>
@@ -600,7 +602,8 @@ function roleBadge(string $role): string
                         </div>
                         <div style="display:flex;align-items:center;gap:.6rem;">
                             <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($userStats['admins'] ?? 0) ?></div>
+                                <?= (int) ($userStats['admins'] ?? 0) ?>
+                            </div>
                             <span class="db-badge db-badge--red">admin</span>
                         </div>
                     </div>
@@ -652,6 +655,9 @@ function roleBadge(string $role): string
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
+                <a href="news-manager.php" class="db-badge db-badge--green" style="text-decoration:none;">
+                    <i class="bi bi-pencil-square"></i> Verwalten
+                </a>
 
                 <!-- News-Aufschlüsselung -->
                 <div class="db-card mt-3">
@@ -664,7 +670,8 @@ function roleBadge(string $role): string
                         </div>
                         <div style="display:flex;align-items:center;gap:.6rem;">
                             <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?></div>
+                                <?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?>
+                            </div>
                             <span class="db-badge db-badge--green">Online</span>
                         </div>
                     </div>
@@ -674,7 +681,8 @@ function roleBadge(string $role): string
                         </div>
                         <div style="display:flex;align-items:center;gap:.6rem;">
                             <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($newsStats['entwurf'] ?? 0) ?></div>
+                                <?= (int) ($newsStats['entwurf'] ?? 0) ?>
+                            </div>
                             <span class="db-badge db-badge--amber">Entwurf</span>
                         </div>
                     </div>
