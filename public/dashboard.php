@@ -92,11 +92,31 @@ try {
     LIMIT 8
 ")->fetchAll();
 
+    // Webshop-Statistiken
+    $shopStats = $pdo->query("
+        SELECT
+            COUNT(*)        AS artikel_gesamt,
+            SUM(Stueckzahl) AS stueck_gesamt,
+            COUNT(DISTINCT kategorie_id) AS kategorien
+        FROM Artikel
+    ")->fetch();
+
+    // Letzte 5 Artikel
+    $shopArtikel = $pdo->query("
+        SELECT a.Artikelnummer, a.Bezeichnung, a.Preis, a.Waehrung, a.Stueckzahl, a.bild_pfad, k.name AS kat
+        FROM Artikel a
+        LEFT JOIN Kategorien k ON k.id = a.kategorie_id
+        ORDER BY a.Artikelnummer DESC
+        LIMIT 5
+    ")->fetchAll();
+
 } catch (Throwable $e) {
     $userStats = ['gesamt' => 0, 'admins' => 0, 'mitarbeiter' => 0, 'kunden' => 0];
     $newsStats = ['gesamt' => 0, 'veroeffentlicht' => 0, 'entwurf' => 0];
+    $shopStats = ['artikel_gesamt' => 0, 'stueck_gesamt' => 0, 'kategorien' => 0];
     $users = [];
     $newsList = [];
+    $shopArtikel = [];
     $dbError = $e->getMessage();
 }
 
@@ -528,6 +548,82 @@ function roleBadge(string $role): string
                     <div class="db-stat__label">Veröffentlicht</div>
                 </div>
             </div>
+            <div class="db-stat">
+                <div class="db-stat__icon db-stat__icon--green"><i class="bi bi-box-seam-fill"></i></div>
+                <div>
+                    <div class="db-stat__num"><?= (int) ($shopStats['artikel_gesamt'] ?? 0) ?></div>
+                    <div class="db-stat__label">Artikel im Shop</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Webshop-Widget -->
+        <div class="db-card mb-4">
+            <div class="db-card__head">
+                <h2 class="db-card__title">
+                    <i class="bi bi-shop-fill" style="color:var(--db-green);"></i> Webshop-Übersicht
+                </h2>
+                <a href="webshop-admin.php" class="db-badge db-badge--green" style="text-decoration:none;">
+                    <i class="bi bi-pencil-square"></i> Verwalten
+                </a>
+            </div>
+            <?php if (empty($shopArtikel)): ?>
+                <div style="padding:2rem;text-align:center;color:var(--db-ink-3);">
+                    <i class="bi bi-box-seam" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                    <p style="font-size:.875rem;">Noch keine Artikel vorhanden.</p>
+                </div>
+            <?php else: ?>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+                        <thead>
+                            <tr style="background:#f8fafc;border-bottom:2px solid var(--db-border);">
+                                <th style="padding:.6rem 1rem;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Artikel</th>
+                                <th style="padding:.6rem 1rem;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Kategorie</th>
+                                <th style="padding:.6rem 1rem;text-align:right;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Preis</th>
+                                <th style="padding:.6rem 1rem;text-align:right;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Bestand</th>
+                                <th style="padding:.6rem 1rem;text-align:right;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($shopArtikel as $sa): ?>
+                            <tr style="border-bottom:1px solid var(--db-border);">
+                                <td style="padding:.7rem 1rem;">
+                                    <div style="font-weight:600;"><?= htmlspecialchars($sa['Bezeichnung'] ?? '—') ?></div>
+                                    <div style="font-size:.72rem;color:var(--db-ink-3);"><?= htmlspecialchars($sa['Artikelnummer']) ?></div>
+                                </td>
+                                <td style="padding:.7rem 1rem;">
+                                    <span class="db-badge db-badge--gray"><?= htmlspecialchars($sa['kat'] ?? '—') ?></span>
+                                </td>
+                                <td style="padding:.7rem 1rem;text-align:right;font-weight:700;white-space:nowrap;">
+                                    <?= number_format((float)($sa['Preis'] ?? 0), 2, ',', '.') ?> <?= htmlspecialchars($sa['Waehrung'] ?? 'EUR') ?>
+                                </td>
+                                <td style="padding:.7rem 1rem;text-align:right;">
+                                    <?php $stk = (int)($sa['Stueckzahl'] ?? 0); ?>
+                                    <?php if ($stk >= 999999): ?>
+                                        <span style="color:var(--db-ink-3);font-size:.8rem;">∞</span>
+                                    <?php elseif ($stk === 0): ?>
+                                        <span class="db-badge db-badge--red">0</span>
+                                    <?php else: ?>
+                                        <span class="db-badge db-badge--<?= $stk < 5 ? 'amber' : 'green' ?>"><?= $stk ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding:.7rem 1rem;text-align:right;">
+                                    <a href="webshop-admin.php?edit=<?= urlencode($sa['Artikelnummer']) ?>"
+                                       style="font-size:.8rem;color:var(--db-blue);text-decoration:none;font-weight:600;">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div style="padding:.75rem 1.2rem;border-top:1px solid var(--db-border);text-align:right;">
+                    <a href="webshop-admin.php" style="font-size:.8rem;color:var(--db-green);text-decoration:none;font-weight:700;">
+                        Alle <?= (int)($shopStats['artikel_gesamt'] ?? 0) ?> Artikel ansehen <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="row g-4">

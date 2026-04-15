@@ -1,6 +1,5 @@
 <?php
 require __DIR__ . '/../app/auth/bootstrap.php';
-
 require __DIR__ . '/../app/auth/require_login.php';
 
 // Lese User-Daten aus Session
@@ -14,7 +13,7 @@ $user_email = $_SESSION['user_email'] ?? 'keine@email.de';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warenkorb - BookIT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
@@ -35,384 +34,444 @@ $user_email = $_SESSION['user_email'] ?? 'keine@email.de';
         .plan-basic { background: #e5e7eb; color: #374151; }
         .plan-pro { background: var(--primary-color); color: white; }
         .plan-enterprise { background: #059669; color: white; }
+        .qty-controls { display: inline-flex; align-items: center; gap: .5rem; border: 1px solid #dee2e6; border-radius: 999px; padding: .25rem .5rem; }
+        .qty-value { min-width: 2rem; text-align: center; font-weight: 600; }
+        .stock-hint { font-size: .875rem; color: #6b7280; }
+        .stock-warning { font-size: .875rem; color: #b45309; }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="index.php">
-                <img src="logo.png" alt="BookIT Logo" style="height: 40px; margin-right: 10px;">
-                <span style="font-weight: 700; color: var(--primary-color);">BookIT</span>
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="index.php#features">Features</a></li>
-                    <li class="nav-item"><a class="nav-link" href="index.php#pricing">Preise</a></li>
-                    <li class="nav-item"><a class="nav-link" href="index.php#demo">Demo</a></li>
-                    <li class="nav-item"><a class="nav-link" href="about.php">About Us</a></li>
-                    <li class="nav-item"><a class="nav-link" href="index.php#contact">Kontakt</a></li>
-                    <li class="nav-item">
-                        <a class="nav-link position-relative" href="cart.php">
-                            <i class="bi bi-cart3"></i>
-                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="cart-badge" style="display: none;">0</span>
-                        </a>
-                    </li>
-                </ul>
+<?php require __DIR__ . '/../views/partials/navbar.php'; ?>
+
+<div class="container my-5">
+    <h1 class="text-center mb-4">Ihr Warenkorb</h1>
+
+    <div id="cart-items"></div>
+
+    <div id="additional-services" class="cart-item" style="display: none;">
+        <h4 style="color: var(--primary-color);">Zusatzservices</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="website-service" onchange="toggleService('website')">
+                    <label class="form-check-label" for="website-service">
+                        <strong>Komplette Website-Erstellung</strong><br>
+                        <small class="text-muted">Professionelle Website-Erstellung für Ihr Unternehmen</small><br>
+                        <span class="price">€499,00 (einmalig)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="hosting-service" onchange="toggleService('hosting')">
+                    <label class="form-check-label" for="hosting-service">
+                        <strong>Server-Hosting</strong><br>
+                        <small class="text-muted">Professionelles Hosting für Ihre BookIT-Installation</small><br>
+                        <span class="price">€9,99/Monat</span>
+                    </label>
+                </div>
             </div>
         </div>
-    </nav>
+    </div>
 
-    <div class="container my-5">
-        <h1 class="text-center mb-4">Ihr Warenkorb</h1>
-        
-        <div id="cart-items">
-            <!-- Cart items will be loaded here -->
+    <div id="cart-total" class="cart-total" style="display: none;">
+        <div class="row">
+            <div class="col-md-8">
+                <h4>Gesamt: <span id="total-price">€0,00</span></h4>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary btn-lg me-2" onclick="proceedToCheckout()">Kauf abschließen</button>
+                <button class="btn btn-outline-secondary" onclick="clearCart()">Warenkorb leeren</button>
+            </div>
         </div>
-        
-        <!-- Zusatzservices Section -->
-        <div id="additional-services" class="cart-item" style="display: none;">
-            <h4 style="color: var(--primary-color);">Zusatzservices</h4>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="website-service" onchange="toggleService('website', 499)">
-                        <label class="form-check-label" for="website-service">
-                            <strong>Komplette Website-Erstellung</strong><br>
-                            <small class="text-muted">Professionelle Website-Erstellung für Ihr Unternehmen</small><br>
-                            <span class="price">€499 (einmalig)</span>
-                        </label>
+    </div>
+
+    <div id="empty-cart" class="empty-cart">
+        <i class="bi bi-cart-x display-1 text-muted mb-3"></i>
+        <h3>Ihr Warenkorb ist leer</h3>
+        <p>Fügen Sie Artikel oder Abonnements hinzu, um hier Ihren Warenkorb zu sehen.</p>
+        <a href="webshop.php" class="btn btn-primary">Zum Webshop</a>
+    </div>
+</div>
+
+<div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bestellung abschließen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Rechnungsempfänger</label>
+                        <div class="form-control-plaintext"><strong id="displayCustomerName"><?= htmlspecialchars($user_name) ?></strong></div>
+                        <small class="text-muted" id="displayCustomerEmail"><?= htmlspecialchars($user_email) ?></small>
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="hosting-service" onchange="toggleService('hosting', 9.99)">
-                        <label class="form-check-label" for="hosting-service">
-                            <strong>Server-Hosting</strong><br>
-                            <small class="text-muted">Professionelles Hosting für Ihre BookIT-Installation</small><br>
-                            <span class="price">€9.99/Monat</span>
-                        </label>
+
+                    <div class="mb-3">
+                        <label for="paymentMethodSelect" class="form-label">Zahlungsmethode</label>
+                        <select class="form-select" id="paymentMethodSelect" required>
+                            <option value="">-- Wählen Sie eine Zahlungsmethode --</option>
+                            <option value="credit_card">Kreditkarte</option>
+                            <option value="bank_transfer">Banküberweisung</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="sepa">SEPA-Lastschrift</option>
+                        </select>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="cart-total" class="cart-total" style="display: none;">
-            <div class="row">
-                <div class="col-md-8">
-                    <h4>Gesamt: <span id="total-price">€0.00</span>/Monat</h4>
-                    <p class="text-muted">Alle Preise verstehen sich zzgl. MwSt.</p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <button class="btn btn-primary btn-lg me-2" onclick="proceedToCheckout()">Zur Kasse</button>
-                    <button class="btn btn-outline-secondary" onclick="clearCart()">Warenkorb leeren</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="empty-cart" class="empty-cart">
-            <i class="bi bi-cart-x display-1 text-muted mb-3"></i>
-            <h3>Ihr Warenkorb ist leer</h3>
-            <p>Entdecken Sie unsere Abonnement-Optionen und fügen Sie ein Plan hinzu.</p>
-            <a href="index.php#pricing" class="btn btn-primary">Zu den Preisen</a>
-        </div>
-    </div>
 
-    <!-- Modal für Warenkorb-Aktion -->
-    <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="cartModalLabel">Artikel hinzugefügt!</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <i class="bi bi-check-circle-fill text-success display-1 mb-3"></i>
-                    <p>Der Plan wurde erfolgreich zu Ihrem Warenkorb hinzugefügt.</p>
-                </div>
-                <div class="modal-footer justify-content-center">
-                    <button type="button" class="btn btn-primary" onclick="goToCart()">Zum Warenkorb</button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Weiter einkaufen</button>
-                </div>
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle"></i>
+                        Beim Klick auf „Kauf abschließen“ wird der Lagerstand nochmals auf dem Server geprüft und bei Erfolg reduziert.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="completeOrder()">Kauf abschließen</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Modal für Checkout (Zahlungsmethode) -->
-    <div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="checkoutModalLabel">Bestellung abschließen</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label class="form-label">Rechnungsempfänger</label>
-                            <div class="form-control-plaintext"><strong id="displayCustomerName"><?php echo htmlspecialchars($user_name); ?></strong></div>
-                            <small class="text-muted" id="displayCustomerEmail"><?php echo htmlspecialchars($user_email); ?></small>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="paymentMethodSelect" class="form-label">Zahlungsmethode</label>
-                            <select class="form-select" id="paymentMethodSelect" required>
-                                <option value="">-- Wählen Sie eine Zahlungsmethode --</option>
-                                <option value="credit_card">Kreditkarte</option>
-                                <option value="bank_transfer">Banküberweisung</option>
-                                <option value="paypal">PayPal</option>
-                                <option value="sepa">SEPA-Lastschrift</option>
-                            </select>
-                        </div>
-                        
-                        <div class="alert alert-info small">
-                            <i class="bi bi-info-circle"></i>
-                            Eine detaillierte Rechnung wird nach Abschluss an Ihre E-Mail-Adresse versendet.
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" onclick="completeOrder()">Bestellung abschließen</button>
-                </div>
-            </div>
-        </div>
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let cart = normalizeCart(JSON.parse(localStorage.getItem('bookit_cart')) || []);
+let additionalServices = JSON.parse(localStorage.getItem('bookit_services')) || { website: false, hosting: false };
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        let cart = JSON.parse(localStorage.getItem('bookit_cart')) || [];
-        let additionalServices = JSON.parse(localStorage.getItem('bookit_services')) || { website: false, hosting: false };
-        const cartBadge = document.getElementById('cart-badge');
-        const cartItems = document.getElementById('cart-items');
-        const additionalServicesDiv = document.getElementById('additional-services');
-        const cartTotal = document.getElementById('cart-total');
-        const emptyCart = document.getElementById('empty-cart');
-        const totalPrice = document.getElementById('total-price');
+const cartBadge = document.getElementById('cart-badge');
+const cartItems = document.getElementById('cart-items');
+const additionalServicesDiv = document.getElementById('additional-services');
+const cartTotal = document.getElementById('cart-total');
+const emptyCart = document.getElementById('empty-cart');
+const totalPrice = document.getElementById('total-price');
 
-        const planNames = {
-            'basic': 'Basic',
-            'pro': 'Pro',
-            'enterprise': 'Enterprise'
-        };
+const planNames = {
+    basic: 'Basic',
+    pro: 'Pro',
+    enterprise: 'Enterprise'
+};
 
-        const planDescriptions = {
-            'basic': 'Bis zu 5 Räume',
-            'pro': 'Bis zu 20 Räume',
-            'enterprise': 'Unbegrenzte Räume'
-        };
+const planDescriptions = {
+    basic: 'Bis zu 5 Räume',
+    pro: 'Bis zu 20 Räume',
+    enterprise: 'Unbegrenzte Räume'
+};
 
-        function updateCartBadge() {
-            const totalItems = cart.length;
-            if (totalItems > 0) {
-                cartBadge.textContent = totalItems;
-                cartBadge.style.display = 'inline-block';
+function normalizeCart(items) {
+    return items.map(item => ({
+        ...item,
+        qty: Math.max(1, Number(item.qty || 1)),
+        price: Number(item.price || 0),
+        stock: item.stock !== undefined ? Number(item.stock) : null,
+        currency: item.currency || 'EUR'
+    }));
+}
+
+function saveCart() {
+    localStorage.setItem('bookit_cart', JSON.stringify(cart));
+}
+
+function formatPrice(value) {
+    return `€${Number(value || 0).toFixed(2)}`;
+}
+
+function updateCartBadge() {
+    const totalItems = cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
+    if (!cartBadge) return;
+
+    if (totalItems > 0) {
+        cartBadge.textContent = totalItems;
+        cartBadge.style.display = 'inline-block';
+    } else {
+        cartBadge.style.display = 'none';
+    }
+}
+
+function getCartItemMeta(item) {
+    const qty = Math.max(1, Number(item.qty || 1));
+    const isPlan = Boolean(item.plan && planNames[item.plan]);
+    const hasStockInfo = !isPlan && item.stock !== null && !Number.isNaN(Number(item.stock));
+    const stock = hasStockInfo ? Math.max(0, Number(item.stock)) : null;
+
+    const displayName = isPlan
+        ? `${planNames[item.plan]} Plan`
+        : (item.name || item.sku || 'Artikel');
+
+    const description = isPlan
+        ? planDescriptions[item.plan]
+        : (item.sku ? `Artikelnummer: ${item.sku}` : 'Webshop-Artikel');
+
+    const badgeClass = isPlan ? `plan-badge plan-${item.plan}` : 'plan-badge plan-basic';
+    const badgeText = isPlan ? planNames[item.plan] : 'Artikel';
+    const priceSuffix = isPlan ? '/Monat' : '';
+    const linePrice = Number(item.price || 0) * qty;
+
+    return {
+        qty,
+        isPlan,
+        displayName,
+        description,
+        badgeClass,
+        badgeText,
+        priceSuffix,
+        linePrice,
+        stock,
+        hasStockInfo,
+        atMaxStock: !isPlan && stock !== null && qty >= stock,
+        soldOut: !isPlan && stock !== null && stock <= 0
+    };
+}
+
+function renderCart() {
+    cartItems.innerHTML = '';
+    let total = 0;
+
+    if (cart.length === 0) {
+        emptyCart.style.display = 'block';
+        additionalServicesDiv.style.display = 'none';
+        cartTotal.style.display = 'none';
+        return;
+    }
+
+    emptyCart.style.display = 'none';
+    additionalServicesDiv.style.display = 'block';
+    cartTotal.style.display = 'block';
+
+    cart.forEach((item, index) => {
+        const meta = getCartItemMeta(item);
+        total += meta.linePrice;
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cart-item';
+
+        let stockInfoHtml = '';
+        if (!meta.isPlan) {
+            if (meta.soldOut) {
+                stockInfoHtml = '<div class="stock-warning mt-2"><i class="bi bi-exclamation-triangle"></i> Dieser Artikel ist aktuell ausverkauft. Bitte entfernen Sie ihn aus dem Warenkorb.</div>';
+            } else if (meta.hasStockInfo) {
+                stockInfoHtml = `<div class="${meta.atMaxStock ? 'stock-warning' : 'stock-hint'} mt-2">Lagernd: ${meta.stock}${meta.atMaxStock ? ' · Mehr kann nicht hinzugefügt werden.' : ''}</div>`;
             } else {
-                cartBadge.style.display = 'none';
+                stockInfoHtml = '<div class="stock-warning mt-2">Lagerbestand unbekannt. Bitte Artikel neu aus dem Webshop hinzufügen.</div>';
             }
         }
 
-        function renderCart() {
-            cartItems.innerHTML = '';
-            let total = 0;
-
-            if (cart.length === 0) {
-                emptyCart.style.display = 'block';
-                additionalServicesDiv.style.display = 'none';
-                cartTotal.style.display = 'none';
-                return;
-            }
-
-            emptyCart.style.display = 'none';
-            additionalServicesDiv.style.display = 'block';
-            cartTotal.style.display = 'block';
-
-            cart.forEach((item, index) => {
-                total += item.price;
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'cart-item';
-                itemDiv.innerHTML = `
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <span class="plan-badge plan-${item.plan}">${planNames[item.plan]}</span>
-                        </div>
-                        <div class="col-md-4">
-                            <h5 class="mb-1">${planNames[item.plan]} Plan</h5>
-                            <p class="text-muted mb-0">${planDescriptions[item.plan]}</p>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>€${item.price.toFixed(2)}/Monat</strong>
-                        </div>
-                        <div class="col-md-3 text-end">
-                            <button class="btn btn-outline-danger btn-sm" onclick="removeFromCart(${index})">
-                                <i class="bi bi-trash"></i> Entfernen
-                            </button>
-                        </div>
+        let qtyControlsHtml = '';
+        if (!meta.isPlan) {
+            qtyControlsHtml = `
+                <div class="mt-3">
+                    <div class="qty-controls">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty(${index}, -1)" ${meta.qty <= 1 ? 'disabled' : ''}>
+                            <i class="bi bi-dash"></i>
+                        </button>
+                        <span class="qty-value">${meta.qty}</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty(${index}, 1)" ${(meta.soldOut || !meta.hasStockInfo || meta.atMaxStock) ? 'disabled' : ''}>
+                            <i class="bi bi-plus"></i>
+                        </button>
                     </div>
-                `;
-                cartItems.appendChild(itemDiv);
-            });
-
-            // Add additional services to total
-            if (additionalServices.website) {
-                total += 499; // One-time fee, but we'll show it as monthly for simplicity
-            }
-            if (additionalServices.hosting) {
-                total += 9.99;
-            }
-
-            totalPrice.textContent = `€${total.toFixed(2)}`;
-            
-            // Update service checkboxes
-            document.getElementById('website-service').checked = additionalServices.website;
-            document.getElementById('hosting-service').checked = additionalServices.hosting;
+                </div>
+            `;
         }
 
-        function removeFromCart(index) {
-            cart.splice(index, 1);
-            localStorage.setItem('bookit_cart', JSON.stringify(cart));
-            updateCartBadge();
-            renderCart();
-        }
+        itemDiv.innerHTML = `
+            <div class="row align-items-center g-3">
+                <div class="col-md-2">
+                    <span class="${meta.badgeClass}">${meta.badgeText}</span>
+                </div>
+                <div class="col-md-4">
+                    <h5 class="mb-1">${meta.displayName}</h5>
+                    <p class="text-muted mb-0">${meta.description}</p>
+                    ${stockInfoHtml}
+                </div>
+                <div class="col-md-3">
+                    <strong>${formatPrice(meta.linePrice)}${meta.priceSuffix}</strong>
+                    ${qtyControlsHtml}
+                </div>
+                <div class="col-md-3 text-end">
+                    <button class="btn btn-outline-danger btn-sm" onclick="removeFromCart(${index})">
+                        <i class="bi bi-trash"></i> Entfernen
+                    </button>
+                </div>
+            </div>
+        `;
+        cartItems.appendChild(itemDiv);
+    });
 
-        function clearCart() {
-            if (confirm('Möchten Sie wirklich den gesamten Warenkorb leeren?')) {
-                cart = [];
-                additionalServices = { website: false, hosting: false };
-                localStorage.setItem('bookit_cart', JSON.stringify(cart));
-                localStorage.setItem('bookit_services', JSON.stringify(additionalServices));
-                updateCartBadge();
-                renderCart();
-            }
-        }
+    if (additionalServices.website) total += 499;
+    if (additionalServices.hosting) total += 9.99;
 
-        function proceedToCheckout() {
-            // Öffne Zahlungsmethoden-Modal
-            const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
-            checkoutModal.show();
-        }
-        
-        function completeOrder() {
-            const paymentMethod = document.getElementById('paymentMethodSelect').value;
-            
-            if (!paymentMethod) {
-                alert('Bitte wählen Sie eine Zahlungsmethode!');
-                return;
-            }
-            
-            if (cart.length === 0) {
-                alert('Ihr Warenkorb ist leer!');
-                return;
-            }
-            
-            // Sende Bestellung an checkout.php
-            const orderData = {
-                cart: cart,
-                services: additionalServices,
-                paymentMethod: paymentMethod
-            };
-            
-            // Debug: Log der versendeten Daten
-            console.log('=== CHECKOUT DEBUG ===');
-            console.log('Cart Items:', cart.length);
-            console.log('Cart Data:', cart);
-            console.log('Payment Method:', paymentMethod);
-            console.log('Services:', additionalServices);
-            console.log('Sending:', JSON.stringify(orderData));
-            console.log('================');
-            
-            fetch('checkout.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderData)
-            })
-            .then(res => {
-                // Debug: Log der Response
-                console.log('Checkout Response Status:', res.status);
-                console.log('Checkout Response Headers:', res.headers.get('Content-Type'));
-                
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                
-                return res.text();
-            })
-            .then(text => {
-                // Debug: Log des raw Text
-                console.log('Checkout Raw Response:', text);
-                
-                if (!text) {
-                    throw new Error('Leere Antwort von Server');
-                }
-                
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    throw new Error(`JSON Parse Fehler: ${e.message}, Response: ${text.substring(0, 200)}`);
-                }
-            })
-            .then(data => {
-                if (data.success) {
-                    const customerEmail = document.getElementById('displayCustomerEmail').textContent;
-                    let msg = 'Bestellung erfolgreich! ';
-                    
-                    if (data.email_sent) {
-                        msg += 'Eine Rechnung wurde an ' + customerEmail + ' versendet.';
-                    } else {
-                        msg += 'Bestellung gespeichert. ';
-                        if (data.email_error) {
-                            msg += '(Rechnung konnte nicht versendet werden: ' + data.email_error.substring(0, 50) + ')';
-                        }
-                    }
-                    
-                    alert(msg);
-                    cart = [];
-                    additionalServices = { website: false, hosting: false };
-                    localStorage.setItem('bookit_cart', JSON.stringify(cart));
-                    localStorage.setItem('bookit_services', JSON.stringify(additionalServices));
-                    updateCartBadge();
-                    renderCart();
-                    
-                    // Schließe Modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
-                    modal.hide();
-                } else {
-                    alert('Fehler: ' + (data.error || 'Bestellung konnte nicht verarbeitet werden.'));
-                }
-            })
-            .catch(err => {
-                alert('Fehler beim Senden der Bestellung: ' + err);
-            });
-        }
+    totalPrice.textContent = formatPrice(total);
+    document.getElementById('website-service').checked = additionalServices.website;
+    document.getElementById('hosting-service').checked = additionalServices.hosting;
+}
 
-        function toggleService(service, price) {
-            additionalServices[service] = !additionalServices[service];
-            localStorage.setItem('bookit_services', JSON.stringify(additionalServices));
-            renderCart();
-        }
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    saveCart();
+    updateCartBadge();
+    renderCart();
+}
 
-        function goToCart() {
-            // Already on cart page, just close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('cartModal'));
-            modal.hide();
-        }
+function changeQty(index, delta) {
+    const item = cart[index];
+    if (!item) return;
 
-        // Initialize
+    const isPlan = Boolean(item.plan && planNames[item.plan]);
+    if (isPlan) return;
+
+    const currentQty = Math.max(1, Number(item.qty || 1));
+    const newQty = currentQty + delta;
+
+    if (newQty < 1) return;
+
+    const hasStockInfo = item.stock !== null && item.stock !== undefined && !Number.isNaN(Number(item.stock));
+    const stock = hasStockInfo ? Math.max(0, Number(item.stock)) : null;
+
+    if (!hasStockInfo) {
+        alert('Lagerbestand unbekannt. Bitte entfernen Sie den Artikel und fügen Sie ihn erneut aus dem Webshop hinzu.');
+        return;
+    }
+
+    if (stock <= 0) {
+        alert('Dieser Artikel ist ausverkauft und kann nicht erhöht werden.');
+        return;
+    }
+
+    if (newQty > stock) {
+        alert(`Es sind nur ${stock} Stück lagernd.`);
+        return;
+    }
+
+    item.qty = newQty;
+    saveCart();
+    updateCartBadge();
+    renderCart();
+}
+
+function clearCart() {
+    if (confirm('Möchten Sie wirklich den gesamten Warenkorb leeren?')) {
+        cart = [];
+        additionalServices = { website: false, hosting: false };
+        saveCart();
+        localStorage.setItem('bookit_services', JSON.stringify(additionalServices));
         updateCartBadge();
         renderCart();
-        
-        // Lade User-Daten nach dem Laden des Modal (wird durch PHP provided)
-        document.addEventListener('DOMContentLoaded', function() {
-            const customerNameElement = document.getElementById('displayCustomerName');
-            const customerEmailElement = document.getElementById('displayCustomerEmail');
-            
-            if (customerNameElement && customerEmailElement) {
-                // User-Daten sind bereits im HTML gesetzt (durch PHP)
-                // Sie werden automatisch angezeigt wenn Modal geöffnet wird
+    }
+}
+
+function toggleService(service) {
+    additionalServices[service] = !additionalServices[service];
+    localStorage.setItem('bookit_services', JSON.stringify(additionalServices));
+    renderCart();
+}
+
+function validateCartForCheckout() {
+    for (const item of cart) {
+        const meta = getCartItemMeta(item);
+        if (!meta.isPlan) {
+            if (!meta.hasStockInfo) {
+                alert(`Beim Artikel "${meta.displayName}" fehlt die Lagerinfo. Bitte entfernen Sie ihn und fügen Sie ihn erneut aus dem Webshop hinzu.`);
+                return false;
             }
-        });
-    </script>
+            if (meta.soldOut) {
+                alert(`Der Artikel "${meta.displayName}" ist aktuell ausverkauft.`);
+                return false;
+            }
+            if (meta.qty > meta.stock) {
+                alert(`Vom Artikel "${meta.displayName}" sind nur ${meta.stock} Stück lagernd.`);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function proceedToCheckout() {
+    if (cart.length === 0) {
+        alert('Ihr Warenkorb ist leer!');
+        return;
+    }
+
+    if (!validateCartForCheckout()) {
+        return;
+    }
+
+    const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+    checkoutModal.show();
+}
+
+function completeOrder() {
+    const paymentMethod = document.getElementById('paymentMethodSelect').value;
+
+    if (!paymentMethod) {
+        alert('Bitte wählen Sie eine Zahlungsmethode!');
+        return;
+    }
+
+    if (cart.length === 0) {
+        alert('Ihr Warenkorb ist leer!');
+        return;
+    }
+
+    if (!validateCartForCheckout()) {
+        return;
+    }
+
+    const orderData = {
+        cart: cart,
+        services: additionalServices,
+        paymentMethod: paymentMethod
+    };
+
+    fetch('checkout.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+    })
+    .then(async (res) => {
+        const text = await res.text();
+        let data = {};
+        try {
+            data = text ? JSON.parse(text) : {};
+        } catch (e) {
+            throw new Error('Ungültige Serverantwort');
+        }
+
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+        }
+
+        return data;
+    })
+    .then((data) => {
+        const customerEmail = document.getElementById('displayCustomerEmail').textContent;
+        let msg = 'Bestellung erfolgreich abgeschlossen. Der Lagerstand wurde reduziert.';
+
+        if (data.email_sent) {
+            msg += ' Eine Rechnung wurde an ' + customerEmail + ' versendet.';
+        } else if (data.email_error) {
+            msg += ' Die Rechnung konnte per E-Mail nicht versendet werden: ' + data.email_error;
+        }
+
+        alert(msg);
+
+        cart = [];
+        additionalServices = { website: false, hosting: false };
+        saveCart();
+        localStorage.setItem('bookit_services', JSON.stringify(additionalServices));
+        updateCartBadge();
+        renderCart();
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
+        if (modal) modal.hide();
+    })
+    .catch((err) => {
+        alert('Fehler beim Abschließen des Kaufs: ' + err.message);
+    });
+}
+
+updateCartBadge();
+renderCart();
+</script>
 </body>
 </html>

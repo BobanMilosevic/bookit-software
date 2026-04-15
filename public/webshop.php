@@ -23,31 +23,22 @@ try {
         JOIN Kategorien k ON k.id = a.kategorie_id
         ORDER BY k.name, a.Bezeichnung
     ");
+    $articles = $stmt->fetchAll();
 } catch (Throwable $e) {
     echo "<pre>FEHLER:\n" . $e->getMessage() . "\n\n" . $e->getFile() . ":" . $e->getLine() . "</pre>";
     exit;
 }
 
-// Gruppieren
-$grouped = [];
-foreach ($articles as $a) {
-    $cat            = (string)$a['Kategorie'];
-    $grouped[$cat][] = $a;
-}
-$allCategories = array_keys($grouped);
-sort($allCategories);
-$articles = $stmt->fetchAll();
-
 // Kategorien vorbereiten
 $grouped = [];
 foreach ($articles as $a) {
-    $cat            = (string)$a['Kategorie'];
+    $cat = (string)$a['Kategorie'];
     $grouped[$cat][] = $a;
 }
 $allCategories = array_keys($grouped);
 sort($allCategories);
 
-// Sortierung der Kategorien (optional)
+// Sortierung der Kategorien
 $preferredOrder = ['Abos', 'Hardware', 'Merch', 'Sonstiges'];
 uksort($grouped, function ($a, $b) use ($preferredOrder) {
     $pa = array_search($a, $preferredOrder, true);
@@ -87,16 +78,12 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
     <link rel="stylesheet" href="/assets/css/index.css">
     <link rel="stylesheet" href="/assets/css/webshop.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-
 </head>
 
 <body>
 
 <?php require __DIR__ . '/../views/partials/navbar.php'; ?>
 
-<!-- ═══════════════════════════════════════════════
-     PAGE HEADER
-════════════════════════════════════════════════ -->
 <header class="ws-header">
     <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -112,12 +99,8 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
     </div>
 </header>
 
-<!-- ═══════════════════════════════════════════════
-     MAIN
-════════════════════════════════════════════════ -->
 <main class="container py-4">
 
-    <!-- Filterbar -->
     <div class="ws-filterbar">
         <div class="row g-3 align-items-center">
             <div class="col-12 col-lg-5">
@@ -143,7 +126,6 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
         </div>
     </div>
 
-    <!-- No results -->
     <div id="ws-no-results">
         <i class="bi bi-search"></i>
         <h3>Keine Artikel gefunden</h3>
@@ -179,7 +161,6 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
                         $priceRaw = (float)$a['Preis'];
                         $price    = number_format($priceRaw, 2, ',', '.');
 
-
                         $bildPfad = (string)($a['bild_pfad'] ?? '');
                         $media = getProductImage($bildPfad, $cat, $categoryIcons);
                         ?>
@@ -189,11 +170,6 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
                              data-category="<?= htmlspecialchars($cat) ?>">
 
                             <div class="ws-card">
-
-                                <!-- ─── PRODUKTBILD ───────────────────────────
-                                     Bild wird aus der DB-Spalte bild_pfad geladen.
-                                     Kein Bild gesetzt → Kategorie-Icon als Fallback.
-                                ─────────────────────────────────────────── -->
                                 <div class="ws-card__media <?= $media['type'] === 'icon' ? 'ws-card__media--placeholder' : '' ?>">
                                     <?php if ($media['type'] === 'img'): ?>
                                         <img src="<?= htmlspecialchars($media['src']) ?>"
@@ -213,7 +189,12 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
                                         <div class="ws-card__price">
                                             <?= $price ?> <?= htmlspecialchars($currency) ?>
                                         </div>
-                                        
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <?php if ($stock <= 0): ?>
+                                            <span class="badge bg-danger">Ausverkauft</span>
+                                        <?php endif; ?>
                                     </div>
 
                                     <button
@@ -223,9 +204,10 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
                                         data-name="<?= htmlspecialchars($name) ?>"
                                         data-price="<?= $priceRaw ?>"
                                         data-currency="<?= htmlspecialchars($currency) ?>"
+                                        data-stock="<?= $stock ?>"
                                     >
                                         <?php if ($stock <= 0): ?>
-                                            <i class="bi bi-x-circle"></i> Nicht verfügbar
+                                            <i class="bi bi-x-circle"></i> Ausverkauft
                                         <?php else: ?>
                                             <i class="bi bi-bag-plus"></i> In den Warenkorb
                                         <?php endif; ?>
@@ -254,45 +236,84 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
     </div>
 </footer>
 
-<!-- ═══════════════════════════════════════════════
-     JS  —  Logik unverändert
-════════════════════════════════════════════════ -->
 <script>
-/* ===== Warenkorb (localStorage) ===== */
-function getCart(){ return JSON.parse(localStorage.getItem('bookit_cart') || '[]'); }
-function saveCart(c){ localStorage.setItem('bookit_cart', JSON.stringify(c)); }
-function updateCartBadge(){
-    const cart  = getCart();
-    const total = cart.reduce((s,i) => s + (i.qty || 0), 0);
-    const b     = document.getElementById('cart-badge');
-    if (!b) return;
-    if (total > 0){ b.style.display = 'inline-block'; b.textContent = total; }
-    else { b.style.display = 'none'; }
+function getCart() {
+    return JSON.parse(localStorage.getItem('bookit_cart') || '[]');
 }
-function addToCart(item){
+
+function saveCart(c) {
+    localStorage.setItem('bookit_cart', JSON.stringify(c));
+}
+
+function updateCartBadge() {
+    const cart  = getCart();
+    const total = cart.reduce((s, i) => s + Number(i.qty || 0), 0);
+    const b = document.getElementById('cart-badge');
+    if (!b) return;
+
+    if (total > 0) {
+        b.style.display = 'inline-block';
+        b.textContent = total;
+    } else {
+        b.style.display = 'none';
+    }
+}
+
+function addToCart(item) {
     const cart = getCart();
-    const ex   = cart.find(x => x.sku === item.sku);
-    if (ex) ex.qty += 1;
-    else cart.push({...item, qty: 1});
+    const existing = cart.find(x => x.sku === item.sku);
+    const stock = Number(item.stock || 0);
+
+    if (stock <= 0) {
+        alert('Dieser Artikel ist ausverkauft.');
+        return false;
+    }
+
+    if (existing) {
+        const currentQty = Number(existing.qty || 0);
+        if (currentQty >= stock) {
+            alert(`Es sind nur ${stock} Stück lagernd.`);
+            return false;
+        }
+        existing.qty = currentQty + 1;
+        existing.stock = stock;
+        existing.price = Number(item.price || existing.price || 0);
+        existing.name = item.name || existing.name || 'Artikel';
+        existing.currency = item.currency || existing.currency || 'EUR';
+    } else {
+        cart.push({
+            sku: item.sku,
+            name: item.name || 'Artikel',
+            price: Number(item.price || 0),
+            currency: item.currency || 'EUR',
+            stock: stock,
+            qty: 1
+        });
+    }
+
     saveCart(cart);
     updateCartBadge();
+    return true;
 }
 
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('.add-to-cart');
     if (!btn || btn.disabled) return;
 
-    addToCart({
-        sku:      btn.dataset.sku,
-        name:     btn.dataset.name,
-        price:    Number(btn.dataset.price || 0),
-        currency: btn.dataset.currency || 'EUR'
+    const added = addToCart({
+        sku: btn.dataset.sku,
+        name: btn.dataset.name,
+        price: Number(btn.dataset.price || 0),
+        currency: btn.dataset.currency || 'EUR',
+        stock: Number(btn.dataset.stock || 0)
     });
 
-    const icon = btn.querySelector('i');
+    if (!added) return;
+
     const oldHtml = btn.innerHTML;
     btn.innerHTML = '<i class="bi bi-check-lg"></i> Hinzugefügt';
     btn.classList.add('added');
+
     setTimeout(() => {
         btn.innerHTML = oldHtml;
         btn.classList.remove('added');
@@ -301,26 +322,24 @@ document.addEventListener('click', (e) => {
 
 updateCartBadge();
 
-/* ===== Filter + Suche ===== */
 let activeCategory = 'all';
 
-function applyFilters(){
-    const q     = (document.getElementById('search').value || '').trim().toLowerCase();
+function applyFilters() {
+    const q = (document.getElementById('search').value || '').trim().toLowerCase();
     const items = document.querySelectorAll('.product-item');
 
     items.forEach(el => {
-        const name     = el.dataset.name || '';
-        const sku      = el.dataset.sku  || '';
-        const cat      = el.dataset.category || '';
+        const name = el.dataset.name || '';
+        const sku = el.dataset.sku || '';
+        const cat = el.dataset.category || '';
         const matchText = !q || name.includes(q) || sku.includes(q);
-        const matchCat  = (activeCategory === 'all') || (cat === activeCategory);
+        const matchCat = (activeCategory === 'all') || (cat === activeCategory);
         el.style.display = (matchText && matchCat) ? '' : 'none';
     });
 
-    // Kategorien komplett verstecken, wenn darin nichts sichtbar ist
     let anyVisible = false;
     document.querySelectorAll('.category-section').forEach(sec => {
-        const secCat     = sec.dataset.category;
+        const secCat = sec.dataset.category;
         const hasVisible = Array.from(sec.querySelectorAll('.product-item'))
             .some(x => x.style.display !== 'none');
         const show = hasVisible && (activeCategory === 'all' || secCat === activeCategory);

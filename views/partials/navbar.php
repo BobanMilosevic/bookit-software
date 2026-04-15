@@ -20,6 +20,7 @@ $displayName = $userName !== '' ? $userName : $userEmail;
     <ul class="bk-nav__links">
       <li><a href="/webshop.php">Webshop</a></li>
       <li><a href="/about.php">Über uns</a></li>
+      <li><a href="/downloads.php">Downloads</a></li>
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
           News

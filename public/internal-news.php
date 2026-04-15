@@ -112,6 +112,8 @@ function excerpt(string $content, int $words = 22): string {
             background: var(--bg);
             color: var(--ink);
             -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
         }
 
         /* ── Page header ─────────────────────────────────── */
