@@ -14,6 +14,7 @@ try {
         SELECT
           a.Artikelnummer,
           a.Bezeichnung,
+          a.Beschreibung,
           a.Preis,
           a.Waehrung,
           a.Stueckzahl,
@@ -78,6 +79,195 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
     <link rel="stylesheet" href="/assets/css/index.css">
     <link rel="stylesheet" href="/assets/css/webshop.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+    <style>
+        .product-item {
+            cursor: pointer;
+        }
+
+        .ws-card {
+            height: 100%;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .ws-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 30px rgba(0,0,0,.10);
+        }
+
+        .ws-card__body {
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            height: 100%;
+        }
+
+        .ws-card__footer {
+            margin-top: auto;
+        }
+
+        .ws-card__desc {
+            color: #64748b;
+            font-size: .95rem;
+            line-height: 1.45;
+            min-height: 2.8em;
+        }
+
+        .ws-stock-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .4rem .75rem;
+            border-radius: 999px;
+            font-size: .65rem;
+            font-weight: 500;
+        }
+
+        .ws-stock-badge.in-stock {
+            background: rgba(17,128,117,.12);
+            color: #118075;
+        }
+
+        .ws-stock-badge.out-of-stock {
+            background: rgba(220,53,69,.12);
+            color: #dc3545;
+        }
+
+        .ws-detail-modal .modal-content {
+            border: 0;
+            border-radius: 22px;
+            overflow: hidden;
+            box-shadow: 0 30px 70px rgba(15, 23, 42, .22);
+        }
+
+        .ws-detail-modal .modal-header {
+            border-bottom: 0;
+            padding: 1.25rem 1.5rem 0;
+        }
+
+        .ws-detail-modal .modal-body {
+            padding: 1.25rem 1.5rem 1.5rem;
+        }
+
+        .ws-detail-media {
+            background: linear-gradient(180deg, #f8fafc 0%, #eef4f7 100%);
+            border-radius: 18px;
+            min-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid rgba(15, 23, 42, .06);
+        }
+
+        .ws-detail-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .ws-detail-media--placeholder {
+            flex-direction: column;
+            color: #64748b;
+            gap: .75rem;
+        }
+
+        .ws-detail-media--placeholder i {
+            font-size: 4rem;
+            color: #118075;
+        }
+
+        .ws-detail-sku {
+            color: #64748b;
+            font-size: .92rem;
+            margin-bottom: .35rem;
+        }
+
+        .ws-detail-title {
+            font-size: 1.85rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: .75rem;
+        }
+
+        .ws-detail-price {
+            font-size: 1.65rem;
+            font-weight: 700;
+            color: #118075;
+            margin-bottom: 1rem;
+        }
+
+        .ws-detail-description {
+            color: #475569;
+            line-height: 1.7;
+            background: #f8fafc;
+            border: 1px solid rgba(15, 23, 42, .06);
+            border-radius: 16px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+            white-space: pre-line;
+        }
+
+        .ws-detail-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .65rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .ws-detail-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            padding: .5rem .8rem;
+            background: #f8fafc;
+            border: 1px solid rgba(15, 23, 42, .06);
+            border-radius: 999px;
+            color: #334155;
+            font-size: .9rem;
+            font-weight: 500;
+        }
+
+        .ws-detail-actions {
+            display: flex;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+
+        .ws-detail-btn {
+            border: 0;
+            border-radius: 12px;
+            padding: .9rem 1.15rem;
+            font-weight: 600;
+            transition: transform .2s ease, opacity .2s ease;
+        }
+
+        .ws-detail-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .ws-detail-btn-primary {
+            background: linear-gradient(135deg, #118075, #4D8496);
+            color: #fff;
+        }
+
+        .ws-detail-btn-secondary {
+            background: #eef2f7;
+            color: #334155;
+        }
+
+        @media (max-width: 991.98px) {
+            .ws-detail-media {
+                min-height: 240px;
+                margin-bottom: 1rem;
+            }
+
+            .ws-detail-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -154,22 +344,43 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
                 <div class="row g-3 g-lg-4">
                     <?php foreach ($items as $a): ?>
                         <?php
-                        $nr       = (string)$a['Artikelnummer'];
-                        $name     = (string)$a['Bezeichnung'];
-                        $currency = (string)($a['Waehrung'] ?? 'EUR');
-                        $stock    = (int)$a['Stueckzahl'];
-                        $priceRaw = (float)$a['Preis'];
-                        $price    = number_format($priceRaw, 2, ',', '.');
+                        $nr          = (string)$a['Artikelnummer'];
+                        $name        = (string)$a['Bezeichnung'];
+                        $description = trim((string)($a['Beschreibung'] ?? ''));
+                        $currency    = (string)($a['Waehrung'] ?? 'EUR');
+                        $stock       = (int)$a['Stueckzahl'];
+                        $priceRaw    = (float)$a['Preis'];
+                        $price       = number_format($priceRaw, 2, ',', '.');
 
                         $bildPfad = (string)($a['bild_pfad'] ?? '');
                         $media = getProductImage($bildPfad, $cat, $categoryIcons);
+
+                        $shortDescription = $description !== ''
+                            ? mb_strimwidth($description, 0, 90, '…')
+                            : 'Keine Beschreibung vorhanden.';
                         ?>
                         <div class="col-12 col-sm-6 col-lg-4 product-item"
                              data-name="<?= htmlspecialchars(mb_strtolower($name)) ?>"
                              data-sku="<?= htmlspecialchars(mb_strtolower($nr)) ?>"
                              data-category="<?= htmlspecialchars($cat) ?>">
 
-                            <div class="ws-card">
+                            <div class="ws-card product-card"
+                                 role="button"
+                                 tabindex="0"
+                                 data-bs-toggle="modal"
+                                 data-bs-target="#productDetailModal"
+                                 data-sku="<?= htmlspecialchars($nr) ?>"
+                                 data-name="<?= htmlspecialchars($name) ?>"
+                                 data-description="<?= htmlspecialchars($description !== '' ? $description : 'Keine Beschreibung vorhanden.') ?>"
+                                 data-price="<?= $priceRaw ?>"
+                                 data-price-formatted="<?= htmlspecialchars($price . ' ' . $currency) ?>"
+                                 data-currency="<?= htmlspecialchars($currency) ?>"
+                                 data-stock="<?= $stock ?>"
+                                 data-category-name="<?= htmlspecialchars($cat) ?>"
+                                 data-image-type="<?= htmlspecialchars($media['type']) ?>"
+                                 data-image-src="<?= htmlspecialchars($media['type'] === 'img' ? $media['src'] : '') ?>"
+                                 data-image-icon="<?= htmlspecialchars($media['type'] === 'icon' ? $media['icon'] : '') ?>"
+                            >
                                 <div class="ws-card__media <?= $media['type'] === 'icon' ? 'ws-card__media--placeholder' : '' ?>">
                                     <?php if ($media['type'] === 'img'): ?>
                                         <img src="<?= htmlspecialchars($media['src']) ?>"
@@ -182,22 +393,30 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
                                 </div>
 
                                 <div class="ws-card__body">
-                                    <div class="ws-card__sku">#<?= htmlspecialchars($nr) ?></div>
+                                    <!--<div class="ws-card__sku">#<?= htmlspecialchars($nr) ?></div>-->
                                     <h3 class="ws-card__name"><?= htmlspecialchars($name) ?></h3>
+                                    
 
                                     <div class="ws-card__footer">
                                         <div class="ws-card__price">
                                             <?= $price ?> <?= htmlspecialchars($currency) ?>
                                         </div>
-                                    </div>
-
-                                    <div class="mb-2">
+                                        <div class="mb-2">
                                         <?php if ($stock <= 0): ?>
-                                            <span class="badge bg-danger">Ausverkauft</span>
+                                            <span class="ws-stock-badge out-of-stock">
+                                                <i class="bi bi-x-circle"></i> Ausverkauft
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="ws-stock-badge in-stock">
+                                                <i class="bi bi-check-circle"></i> Lagernd
+                                            </span>
                                         <?php endif; ?>
                                     </div>
+                                    </div>
 
-                                    <button
+                                    
+                                    <!--<button
+                                        type="button"
                                         class="ws-btn-cart add-to-cart"
                                         <?= $stock <= 0 ? 'disabled' : '' ?>
                                         data-sku="<?= htmlspecialchars($nr) ?>"
@@ -211,7 +430,7 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
                                         <?php else: ?>
                                             <i class="bi bi-bag-plus"></i> In den Warenkorb
                                         <?php endif; ?>
-                                    </button>
+                                    </button>-->
                                 </div>
 
                             </div>
@@ -225,6 +444,52 @@ function getProductImage(string $bildPfad, string $cat, array $icons): array {
     <?php endif; ?>
 
 </main>
+
+<div class="modal fade ws-detail-modal" id="productDetailModal" tabindex="-1" aria-labelledby="productDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Schließen"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4 align-items-start">
+                    <div class="col-lg-6">
+                        <div id="detailMedia" class="ws-detail-media"></div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="ws-detail-sku" id="detailSku">#0000000000</div>
+                        <h2 class="ws-detail-title" id="productDetailModalLabel">Artikelname</h2>
+                        <div class="ws-detail-price" id="detailPrice">0,00 EUR</div>
+
+                        <div class="ws-detail-meta">
+                            <span class="ws-detail-pill" id="detailCategory">
+                                <i class="bi bi-tag"></i>
+                                Kategorie
+                            </span>
+                            <span class="ws-detail-pill" id="detailStock">
+                                <i class="bi bi-box-seam"></i>
+                                Lagerstand
+                            </span>
+                        </div>
+
+                        <div class="ws-detail-description" id="detailDescription">
+                            Keine Beschreibung vorhanden.
+                        </div>
+
+                        <div class="ws-detail-actions">
+                            <button type="button" id="detailAddToCart" class="ws-detail-btn ws-detail-btn-primary">
+                                <i class="bi bi-bag-plus"></i> In den Warenkorb
+                            </button>
+                            <button type="button" class="ws-detail-btn ws-detail-btn-secondary" data-bs-dismiss="modal">
+                                Schließen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <footer style="background:#1e293b; color:rgba(255,255,255,.5); padding:2.5rem 0; text-align:center; margin-top:4rem;">
     <div class="container">
@@ -296,28 +561,129 @@ function addToCart(item) {
     return true;
 }
 
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.add-to-cart');
-    if (!btn || btn.disabled) return;
-
-    const added = addToCart({
-        sku: btn.dataset.sku,
-        name: btn.dataset.name,
-        price: Number(btn.dataset.price || 0),
-        currency: btn.dataset.currency || 'EUR',
-        stock: Number(btn.dataset.stock || 0)
-    });
-
-    if (!added) return;
-
-    const oldHtml = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check-lg"></i> Hinzugefügt';
-    btn.classList.add('added');
+function showAddedFeedback(button) {
+    const oldHtml = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check-lg"></i> Hinzugefügt';
+    button.classList.add('added');
 
     setTimeout(() => {
-        btn.innerHTML = oldHtml;
-        btn.classList.remove('added');
+        button.innerHTML = oldHtml;
+        button.classList.remove('added');
     }, 1000);
+}
+
+document.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('.add-to-cart');
+    if (addBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (addBtn.disabled) return;
+
+        const added = addToCart({
+            sku: addBtn.dataset.sku,
+            name: addBtn.dataset.name,
+            price: Number(addBtn.dataset.price || 0),
+            currency: addBtn.dataset.currency || 'EUR',
+            stock: Number(addBtn.dataset.stock || 0)
+        });
+
+        if (added) {
+            showAddedFeedback(addBtn);
+        }
+        return;
+    }
+
+    const card = e.target.closest('.product-card');
+    if (!card) return;
+});
+
+document.addEventListener('keydown', (e) => {
+    const card = e.target.closest('.product-card');
+    if (!card) return;
+
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        card.click();
+    }
+});
+
+const productDetailModal = document.getElementById('productDetailModal');
+const detailMedia = document.getElementById('detailMedia');
+const detailSku = document.getElementById('detailSku');
+const detailTitle = document.getElementById('productDetailModalLabel');
+const detailPrice = document.getElementById('detailPrice');
+const detailCategory = document.getElementById('detailCategory');
+const detailStock = document.getElementById('detailStock');
+const detailDescription = document.getElementById('detailDescription');
+const detailAddToCart = document.getElementById('detailAddToCart');
+
+if (productDetailModal) {
+    productDetailModal.addEventListener('show.bs.modal', function (event) {
+        const trigger = event.relatedTarget;
+        if (!trigger) return;
+
+        const sku = trigger.dataset.sku || '';
+        const name = trigger.dataset.name || 'Artikel';
+        const description = trigger.dataset.description || 'Keine Beschreibung vorhanden.';
+        const priceFormatted = trigger.dataset.priceFormatted || '0,00 EUR';
+        const stock = Number(trigger.dataset.stock || 0);
+        const categoryName = trigger.dataset.categoryName || 'Kategorie';
+        const imageType = trigger.dataset.imageType || 'icon';
+        const imageSrc = trigger.dataset.imageSrc || '';
+        const imageIcon = trigger.dataset.imageIcon || 'bi-box';
+
+        detailSku.textContent = '#' + sku;
+        detailTitle.textContent = name;
+        detailPrice.textContent = priceFormatted;
+        detailDescription.textContent = description;
+
+        detailCategory.innerHTML = `<i class="bi bi-tag"></i> ${categoryName}`;
+
+        if (stock > 0) {
+            detailStock.innerHTML = `<i class="bi bi-check-circle"></i> Lagernd`;
+        } else {
+            detailStock.innerHTML = `<i class="bi bi-x-circle"></i> Ausverkauft`;
+        }
+
+        if (imageType === 'img' && imageSrc) {
+            detailMedia.className = 'ws-detail-media';
+            detailMedia.innerHTML = `<img src="${imageSrc}" alt="${name}">`;
+        } else {
+            detailMedia.className = 'ws-detail-media ws-detail-media--placeholder';
+            detailMedia.innerHTML = `<i class="${imageIcon}"></i><span>${categoryName}</span>`;
+        }
+
+        detailAddToCart.dataset.sku = sku;
+        detailAddToCart.dataset.name = name;
+        detailAddToCart.dataset.price = trigger.dataset.price || '0';
+        detailAddToCart.dataset.currency = trigger.dataset.currency || 'EUR';
+        detailAddToCart.dataset.stock = String(stock);
+
+        if (stock <= 0) {
+            detailAddToCart.disabled = true;
+            detailAddToCart.innerHTML = '<i class="bi bi-x-circle"></i> Ausverkauft';
+        } else {
+            detailAddToCart.disabled = false;
+            detailAddToCart.innerHTML = '<i class="bi bi-bag-plus"></i> In den Warenkorb';
+        }
+    });
+}
+
+detailAddToCart.addEventListener('click', function () {
+    if (detailAddToCart.disabled) return;
+
+    const added = addToCart({
+        sku: detailAddToCart.dataset.sku,
+        name: detailAddToCart.dataset.name,
+        price: Number(detailAddToCart.dataset.price || 0),
+        currency: detailAddToCart.dataset.currency || 'EUR',
+        stock: Number(detailAddToCart.dataset.stock || 0)
+    });
+
+    if (added) {
+        showAddedFeedback(detailAddToCart);
+    }
 });
 
 updateCartBadge();

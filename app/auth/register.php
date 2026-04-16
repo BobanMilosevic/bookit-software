@@ -58,6 +58,6 @@ $insert->execute([$email, $hash, $name]);
 $userId = (int)$pdo->lastInsertId();
 
 header('Location: /login.php?error=' . urlencode('Registrierung fehlgeschlagen'));
-// ✅ Erfolgreich registriert -> zurück zur Startseite
+// Erfolgreich registriert -> zurück zur Startseite
 header('Location: /index.php');
 exit;

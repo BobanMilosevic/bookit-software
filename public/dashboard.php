@@ -6,38 +6,21 @@ require $appRoot . '/app/auth/require_login.php';
 require $appRoot . '/app/db.php';
 
 $userId = (int) $_SESSION['user_id'];
-$userRole = $_SESSION['user_role'] ?? 'Kunde';
 $displayName = ($_SESSION['user_name'] ?? '') !== '' ? $_SESSION['user_name'] : ($_SESSION['user_email'] ?? '');
 
-/* ── Nur Admins dürfen rein ─────────────────────────────── */
-// Rolle direkt aus DB prüfen (nicht nur Session) — sicherer
+/* ── Admin-Check ─────────────────────────────────────────── */
 try {
     $pdo = db();
-
-    $roleCheck = $pdo->prepare("
-        SELECT
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM users_has_Rollen uhr
-                    INNER JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
-                    WHERE uhr.users_idusers = ?
-                      AND r.Rollenname = 'admin'
-                ) THEN 'admin'
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM users_has_Rollen uhr
-                    INNER JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
-                    WHERE uhr.users_idusers = ?
-                      AND r.Rollenname = 'employee'
-                ) THEN 'employee'
-                ELSE 'Kunde'
-            END AS role
+    $rc = $pdo->prepare("
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM users_has_Rollen uhr JOIN Rollen r ON r.idRollen=uhr.Rollen_idRollen WHERE uhr.users_idusers=? AND r.Rollenname='admin') THEN 'admin'
+            WHEN EXISTS (SELECT 1 FROM users_has_Rollen uhr JOIN Rollen r ON r.idRollen=uhr.Rollen_idRollen WHERE uhr.users_idusers=? AND r.Rollenname='employee') THEN 'employee'
+            ELSE 'Kunde' END AS role
     ");
-    $roleCheck->execute([$userId, $userId]);
-    $liveRole = (string) ($roleCheck->fetchColumn() ?? 'Kunde');
+    $rc->execute([$userId, $userId]);
+    $liveRole = (string) ($rc->fetchColumn() ?? 'Kunde');
 } catch (Throwable) {
-    $liveRole = (string) $userRole;
+    $liveRole = 'Kunde';
 }
 
 if ($liveRole !== 'admin') {
@@ -45,87 +28,76 @@ if ($liveRole !== 'admin') {
     exit;
 }
 
-/* ── Daten aus DB ────────────────────────────────────────── */
 try {
     $pdo = db();
 
-    // User-Statistiken
     $userStats = $pdo->query("
-        SELECT
-            COUNT(DISTINCT u.idusers)                                          AS gesamt,
-            SUM(r.Rollenname = 'admin')                                        AS admins,
-            SUM(r.Rollenname = 'employee')                                     AS mitarbeiter,
-            SUM(r.Rollenname = 'Kunde' OR r.Rollenname IS NULL)                AS kunden
+        SELECT COUNT(DISTINCT u.idusers) AS gesamt,
+               SUM(r.Rollenname='admin') AS admins,
+               SUM(r.Rollenname='IT MA' OR r.Rollenname='employee') AS mitarbeiter,
+               SUM(r.Rollenname='Kunde') AS kunden
         FROM users u
-        LEFT JOIN users_has_Rollen uhr ON uhr.users_idusers = u.idusers
-        LEFT JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
+        LEFT JOIN users_has_Rollen uhr ON uhr.users_idusers=u.idusers
+        LEFT JOIN Rollen r ON r.idRollen=uhr.Rollen_idRollen
     ")->fetch();
 
-    // Letzte 10 User
-    $users = $pdo->query("
+    $recentUsers = $pdo->query("
         SELECT u.idusers, u.username, u.email,
-               LOWER(COALESCE(r.Rollenname, 'Kunde')) AS role
+               COALESCE(r.Rollenname,'Kunde') AS role
         FROM users u
-        LEFT JOIN users_has_Rollen uhr ON uhr.users_idusers = u.idusers
-        LEFT JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
-        ORDER BY u.idusers DESC
-        LIMIT 10
+        LEFT JOIN users_has_Rollen uhr ON uhr.users_idusers=u.idusers
+        LEFT JOIN Rollen r ON r.idRollen=uhr.Rollen_idRollen
+        ORDER BY u.idusers DESC LIMIT 6
     ")->fetchAll();
 
-    // News-Statistiken
     $newsStats = $pdo->query("
-    SELECT
-        COUNT(*)                        AS gesamt,
-        SUM(status = 'published')       AS veroeffentlicht,
-        SUM(status = 'draft')           AS entwurf
-    FROM news_posts
-")->fetch();
+        SELECT COUNT(*) AS gesamt,
+               SUM(status='published') AS veroeffentlicht,
+               SUM(status='draft') AS entwurf
+        FROM news_posts
+    ")->fetch();
 
-    // Letzte 8 News-Beiträge
     $newsList = $pdo->query("
-    SELECT id, title, slug, status,
-           LEFT(content, 120)   AS excerpt,
-           published_at,
-           created_at
-    FROM news_posts
-    ORDER BY id DESC
-    LIMIT 8
-")->fetchAll();
+        SELECT id, title, status, type,
+               LEFT(content,100) AS excerpt,
+               published_at, created_at
+        FROM news_posts ORDER BY id DESC LIMIT 6
+    ")->fetchAll();
 
-    // Webshop-Statistiken
     $shopStats = $pdo->query("
-        SELECT
-            COUNT(*)        AS artikel_gesamt,
-            SUM(Stueckzahl) AS stueck_gesamt,
-            COUNT(DISTINCT kategorie_id) AS kategorien
+        SELECT COUNT(*) AS artikel_gesamt,
+               SUM(Stueckzahl) AS stueck_gesamt,
+               COUNT(DISTINCT kategorie_id) AS kategorien
         FROM Artikel
     ")->fetch();
 
-    // Letzte 5 Artikel
     $shopArtikel = $pdo->query("
-        SELECT a.Artikelnummer, a.Bezeichnung, a.Preis, a.Waehrung, a.Stueckzahl, a.bild_pfad, k.name AS kat
+        SELECT a.Artikelnummer, a.Bezeichnung, a.Preis, a.Waehrung, a.Stueckzahl, k.name AS kat
         FROM Artikel a
-        LEFT JOIN Kategorien k ON k.id = a.kategorie_id
-        ORDER BY a.Artikelnummer DESC
-        LIMIT 5
+        LEFT JOIN Kategorien k ON k.id=a.kategorie_id
+        ORDER BY a.Artikelnummer DESC LIMIT 6
     ")->fetchAll();
+
+    $belegeStats = $pdo->query("
+        SELECT COUNT(*) AS gesamt, SUM(Betrag) AS umsatz FROM Belege
+    ")->fetch();
 
 } catch (Throwable $e) {
     $userStats = ['gesamt' => 0, 'admins' => 0, 'mitarbeiter' => 0, 'kunden' => 0];
     $newsStats = ['gesamt' => 0, 'veroeffentlicht' => 0, 'entwurf' => 0];
     $shopStats = ['artikel_gesamt' => 0, 'stueck_gesamt' => 0, 'kategorien' => 0];
-    $users = [];
-    $newsList = [];
-    $shopArtikel = [];
+    $belegeStats = ['gesamt' => 0, 'umsatz' => 0];
+    $recentUsers = $newsList = $shopArtikel = [];
     $dbError = $e->getMessage();
 }
 
 function roleBadge(string $role): string
 {
-    return match ($role) {
-        'admin' => '<span class="db-badge db-badge--red">Admin</span>',
-        'employee' => '<span class="db-badge db-badge--blue">Mitarbeiter</span>',
-        default => '<span class="db-badge db-badge--gray">Kunde</span>',
+    return match (strtolower($role)) {
+        'admin' => '<span class="db-badge db-badge--red"><i class="bi bi-shield-fill-check"></i> Admin</span>',
+        'it ma', 'employee' => '<span class="db-badge db-badge--blue"><i class="bi bi-person-badge-fill"></i> MA</span>',
+        'webshop' => '<span class="db-badge db-badge--green"><i class="bi bi-shop"></i> Webshop</span>',
+        default => '<span class="db-badge db-badge--gray"><i class="bi bi-person-fill"></i> Kunde</span>',
     };
 }
 ?>
@@ -137,42 +109,43 @@ function roleBadge(string $role): string
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard – BookIT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/app.css">
-    <link rel="stylesheet" href="/assets/css/index.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/assets/css/index.css">
     <style>
         :root {
-            --db-green: #118075;
-            --db-green-pale: #e6f4f2;
-            --db-blue: #4D8496;
-            --db-blue-pale: #e8f2f6;
-            --db-red: #80111B;
-            --db-ink: #1e293b;
-            --db-ink-2: #475569;
-            --db-ink-3: #94a3b8;
-            --db-bg: #f8fafc;
-            --db-white: #fff;
-            --db-border: #e2e8f0;
-            --db-radius: 14px;
-            --db-shadow: 0 1px 3px rgba(15, 23, 42, .06), 0 1px 2px rgba(15, 23, 42, .04);
-            --db-shadow-md: 0 4px 20px rgba(15, 23, 42, .08);
+            --g: #118075;
+            --gp: #e6f4f2;
+            --b: #4D8496;
+            --bp: #e8f2f6;
+            --r: #80111B;
+            --rp: #fee2e2;
+            --am: #d97706;
+            --amp: #fef3c7;
+            --ink: #1e293b;
+            --i2: #475569;
+            --i3: #94a3b8;
+            --bg: #f8fafc;
+            --wh: #fff;
+            --br: #e2e8f0;
+            --rad: 14px;
+            --sh: 0 1px 3px rgba(15, 23, 42, .06), 0 1px 2px rgba(15, 23, 42, .04);
+            --shm: 0 4px 24px rgba(15, 23, 42, .09);
         }
 
         body {
-            background: var(--db-bg);
+            background: var(--bg);
             font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-            color: var(--db-ink);
+            color: var(--ink);
         }
 
-        /* Header */
-        .db-header {
-            background: linear-gradient(135deg, #80111B, #4D8496);
-            padding: 48px 0 56px;
+        .db-hero {
+            background: linear-gradient(135deg, var(--r) 0%, #4D8496 100%);
+            padding: 40px 0 80px;
             position: relative;
             overflow: hidden;
         }
 
-        .db-header::before {
+        .db-hero::before {
             content: '';
             position: absolute;
             inset: 0;
@@ -181,73 +154,72 @@ function roleBadge(string $role): string
             pointer-events: none;
         }
 
-        .db-header .container {
+        .db-hero .container {
             position: relative;
             z-index: 1;
         }
 
-        .db-header__label {
-            font-size: .72rem;
+        .db-hero__label {
+            font-size: .7rem;
             font-weight: 700;
-            letter-spacing: .12em;
+            letter-spacing: .14em;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, .6);
+            color: rgba(255, 255, 255, .55);
             margin-bottom: .4rem;
         }
 
-        .db-header h1 {
-            font-size: clamp(1.6rem, 3vw, 2.2rem);
-            font-weight: 700;
+        .db-hero h1 {
+            font-size: clamp(1.6rem, 3vw, 2.3rem);
+            font-weight: 800;
             color: #fff;
-            letter-spacing: -.025em;
-            margin: 0 0 .4rem;
+            letter-spacing: -.03em;
+            margin: 0 0 .35rem;
         }
 
-        .db-header p {
+        .db-hero__sub {
             color: rgba(255, 255, 255, .7);
-            margin: 0;
             font-size: .9rem;
+            margin: 0;
         }
 
-        .db-header__badge {
+        .db-hero__chip {
             display: inline-flex;
             align-items: center;
-            gap: .35rem;
+            gap: .4rem;
             background: rgba(255, 255, 255, .15);
             border: 1px solid rgba(255, 255, 255, .2);
             color: #fff;
-            font-size: .72rem;
-            font-weight: 700;
-            padding: .3rem .85rem;
-            border-radius: 999px;
-            letter-spacing: .05em;
-            margin-top: .75rem;
+            font-size: .75rem;
+            font-weight: 600;
+            padding: .32rem .8rem;
+            border-radius: 99px;
+            margin-top: .9rem;
         }
 
-        /* Stat cards */
-        .db-stats {
+        .db-kpi {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 1rem;
-            margin: -28px 0 2rem;
+            margin-top: -36px;
             position: relative;
             z-index: 2;
+            margin-bottom: 2rem;
         }
 
-        .db-stat {
-            background: var(--db-white);
-            border: 1px solid var(--db-border);
-            border-radius: var(--db-radius);
-            padding: 1.2rem 1.35rem;
-            box-shadow: var(--db-shadow-md);
+        .db-kpi-card {
+            background: var(--wh);
+            border: 1px solid var(--br);
+            border-radius: var(--rad);
+            padding: 1.1rem 1.25rem;
+            box-shadow: var(--shm);
             display: flex;
             align-items: center;
-            gap: .9rem;
+            gap: .85rem;
         }
 
-        .db-stat__icon {
-            width: 44px;
-            height: 44px;
+        .db-kpi__icon {
+            width: 42px;
+            height: 42px;
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -256,98 +228,211 @@ function roleBadge(string $role): string
             flex-shrink: 0;
         }
 
-        .db-stat__icon--red {
-            background: #fef2f2;
-            color: #dc2626;
+        .db-kpi__icon--blue {
+            background: var(--bp);
+            color: var(--b);
         }
 
-        .db-stat__icon--green {
-            background: var(--db-green-pale);
-            color: var(--db-green);
+        .db-kpi__icon--red {
+            background: var(--rp);
+            color: var(--r);
         }
 
-        .db-stat__icon--blue {
-            background: var(--db-blue-pale);
-            color: var(--db-blue);
+        .db-kpi__icon--green {
+            background: var(--gp);
+            color: var(--g);
         }
 
-        .db-stat__icon--gray {
+        .db-kpi__icon--amber {
+            background: var(--amp);
+            color: var(--am);
+        }
+
+        .db-kpi__icon--gray {
             background: #f1f5f9;
             color: #64748b;
         }
 
-        .db-stat__icon--teal {
-            background: #d1fae5;
-            color: #059669;
-        }
-
-        .db-stat__icon--amber {
-            background: #fffbeb;
-            color: #d97706;
-        }
-
-        .db-stat__num {
-            font-size: 1.7rem;
-            font-weight: 700;
+        .db-kpi__num {
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: var(--ink);
             letter-spacing: -.04em;
             line-height: 1;
-            color: var(--db-ink);
         }
 
-        .db-stat__label {
-            font-size: .73rem;
-            color: var(--db-ink-3);
-            font-weight: 500;
-            margin-top: .12rem;
+        .db-kpi__label {
+            font-size: .7rem;
+            color: var(--i3);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            margin-top: .15rem;
         }
 
-        /* Card */
+        .db-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .db-action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: .55rem;
+            padding: 1.3rem 1rem;
+            background: var(--wh);
+            border: 1px solid var(--br);
+            border-radius: var(--rad);
+            box-shadow: var(--sh);
+            text-decoration: none;
+            color: var(--ink);
+            font-size: .82rem;
+            font-weight: 700;
+            text-align: center;
+            transition: all .2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .db-action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            opacity: 0;
+            transition: opacity .2s;
+        }
+
+        .db-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shm);
+            color: var(--ink);
+        }
+
+        .db-action-btn:hover::before {
+            opacity: 1;
+        }
+
+        .db-action-btn--users::before {
+            background: linear-gradient(90deg, var(--b), var(--g));
+        }
+
+        .db-action-btn--shop::before {
+            background: linear-gradient(90deg, var(--g), #059669);
+        }
+
+        .db-action-btn--news::before {
+            background: linear-gradient(90deg, var(--am), #f59e0b);
+        }
+
+        .db-action-btn--dl::before {
+            background: linear-gradient(90deg, var(--r), var(--b));
+        }
+
+        .db-action-btn__icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .db-action-btn__icon--blue {
+            background: var(--bp);
+            color: var(--b);
+        }
+
+        .db-action-btn__icon--green {
+            background: var(--gp);
+            color: var(--g);
+        }
+
+        .db-action-btn__icon--amber {
+            background: var(--amp);
+            color: var(--am);
+        }
+
+        .db-action-btn__icon--red {
+            background: var(--rp);
+            color: var(--r);
+        }
+
+        .db-action-btn__label {
+            color: var(--i2);
+            font-weight: 400;
+        }
+
+        .db-section-hd {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .db-section-hd h2 {
+            font-size: 1rem;
+            font-weight: 800;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            color: var(--ink);
+        }
+
+        .db-section-hd__link {
+            font-size: .8rem;
+            font-weight: 700;
+            color: var(--g);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+        }
+
+        .db-section-hd__link:hover {
+            color: var(--b);
+        }
+
         .db-card {
-            background: var(--db-white);
-            border: 1px solid var(--db-border);
-            border-radius: var(--db-radius);
-            box-shadow: var(--db-shadow);
+            background: var(--wh);
+            border: 1px solid var(--br);
+            border-radius: var(--rad);
+            box-shadow: var(--sh);
             overflow: hidden;
         }
 
         .db-card__head {
-            padding: 1rem 1.35rem;
-            border-bottom: 1px solid var(--db-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding: .9rem 1.3rem;
+            border-bottom: 1px solid var(--br);
         }
 
         .db-card__title {
-            font-size: .92rem;
+            font-size: .88rem;
             font-weight: 700;
-            color: var(--db-ink);
             margin: 0;
             display: flex;
             align-items: center;
             gap: .45rem;
         }
 
-        .db-card__title i {
-            font-size: .85rem;
-        }
-
-        .db-card__title i.icon-user {
-            color: var(--db-blue);
-        }
-
-        .db-card__title i.icon-news {
-            color: var(--db-green);
-        }
-
-        /* Table rows */
         .db-row {
             display: grid;
             align-items: center;
-            padding: .85rem 1.35rem;
-            border-bottom: 1px solid var(--db-border);
-            transition: background .15s;
+            padding: .75rem 1.3rem;
+            border-bottom: 1px solid var(--br);
             gap: .75rem;
+            transition: background .15s;
         }
 
         .db-row:last-child {
@@ -370,122 +455,152 @@ function roleBadge(string $role): string
             width: 32px;
             height: 32px;
             border-radius: 8px;
-            background: var(--db-blue-pale);
-            color: var(--db-blue);
+            background: var(--bp);
+            color: var(--b);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: .8rem;
+            font-size: .78rem;
             font-weight: 700;
             flex-shrink: 0;
         }
 
+        .db-avatar--red {
+            background: var(--rp);
+            color: var(--r);
+        }
+
         .db-row__name {
-            font-size: .875rem;
+            font-size: .85rem;
             font-weight: 600;
-            color: var(--db-ink);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .db-row__sub {
-            font-size: .75rem;
-            color: var(--db-ink-3);
+            font-size: .72rem;
+            color: var(--i3);
             margin-top: .1rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
-        .db-row__news-title {
-            font-size: .875rem;
-            font-weight: 600;
-            color: var(--db-ink);
-        }
-
-        .db-row__news-excerpt {
-            font-size: .75rem;
-            color: var(--db-ink-3);
-            margin-top: .1rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 1;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        /* Badges */
         .db-badge {
-            display: inline-block;
-            font-size: .68rem;
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            font-size: .67rem;
             font-weight: 700;
-            padding: .18rem .6rem;
-            border-radius: 999px;
-            border: 1px solid transparent;
-            letter-spacing: .03em;
+            padding: .2rem .58rem;
+            border-radius: 6px;
             white-space: nowrap;
-        }
-
-        .db-badge--green {
-            background: rgba(34, 197, 94, .1);
-            border-color: rgba(34, 197, 94, .3);
-            color: #16a34a;
-        }
-
-        .db-badge--blue {
-            background: rgba(77, 132, 150, .12);
-            border-color: rgba(77, 132, 150, .3);
-            color: var(--db-blue);
-        }
-
-        .db-badge--gray {
-            background: rgba(100, 116, 139, .1);
-            border-color: rgba(100, 116, 139, .2);
-            color: #64748b;
         }
 
         .db-badge--red {
-            background: rgba(220, 38, 38, .08);
-            border-color: rgba(220, 38, 38, .2);
-            color: #dc2626;
+            background: var(--rp);
+            color: var(--r);
+        }
+
+        .db-badge--blue {
+            background: var(--bp);
+            color: var(--b);
+        }
+
+        .db-badge--green {
+            background: var(--gp);
+            color: var(--g);
+        }
+
+        .db-badge--gray {
+            background: #f1f5f9;
+            color: #64748b;
         }
 
         .db-badge--amber {
-            background: rgba(245, 158, 11, .1);
-            border-color: rgba(245, 158, 11, .3);
-            color: #d97706;
+            background: var(--amp);
+            color: #92400e;
+        }
+
+        .db-breakdown {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .8rem 1.3rem;
+            border-bottom: 1px solid var(--br);
+            font-size: .85rem;
+        }
+
+        .db-breakdown:last-child {
+            border-bottom: none;
+        }
+
+        .db-breakdown__label {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-weight: 600;
+            color: var(--i2);
+        }
+
+        .db-breakdown__val {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--ink);
         }
 
         .db-empty {
             padding: 2.5rem;
             text-align: center;
-            color: var(--db-ink-3);
+            color: var(--i3);
+            font-size: .85rem;
         }
 
         .db-empty i {
-            font-size: 1.8rem;
+            font-size: 2rem;
             display: block;
-            margin-bottom: .5rem;
+            margin-bottom: .6rem;
         }
 
-        .db-empty p {
-            font-size: .82rem;
-            margin: 0;
+        .db-footer-link {
+            display: block;
+            text-align: center;
+            padding: .65rem;
+            font-size: .78rem;
+            font-weight: 700;
+            color: var(--g);
+            border-top: 1px solid var(--br);
+            text-decoration: none;
+            transition: background .15s;
         }
 
-        @media(max-width:900px) {
-            .db-stats {
+        .db-footer-link:hover {
+            background: var(--gp);
+            color: var(--g);
+        }
+
+        @media(max-width:1024px) {
+            .db-kpi {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media(max-width:768px) {
+            .db-kpi {
+                grid-template-columns: repeat(2, 1fr);
+                margin-top: -24px;
+            }
+
+            .db-actions {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        @media(max-width:576px) {
-            .db-stats {
+        @media(max-width:480px) {
+            .db-kpi {
                 grid-template-columns: 1fr 1fr;
             }
 
-            .db-header {
-                padding: 36px 0 56px;
+            .db-actions {
+                grid-template-columns: 1fr 1fr;
             }
         }
     </style>
@@ -495,15 +610,14 @@ function roleBadge(string $role): string
 
     <?php require $appRoot . '/views/partials/navbar.php'; ?>
 
-    <!-- Header -->
-    <header class="db-header">
+    <header class="db-hero">
         <div class="container">
-            <div class="db-header__label">Administration</div>
-            <h1>Admin Dashboard</h1>
-            <p>Übersicht über alle Benutzer und News-Beiträge.</p>
-            <div class="db-header__badge">
-                <i class="bi bi-shield-fill-check"></i> Eingeloggt als
-                <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
+            <div class="db-hero__label">Administration</div>
+            <h1><i class="bi bi-grid-1x2-fill me-2"></i>Admin Dashboard</h1>
+            <p class="db-hero__sub">Zentrale Verwaltung für Benutzer, Webshop, News und Downloads.</p>
+            <div class="db-hero__chip">
+                <i class="bi bi-shield-fill-check"></i>
+                Eingeloggt als <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
             </div>
         </div>
     </header>
@@ -514,273 +628,266 @@ function roleBadge(string $role): string
             <div class="alert alert-warning d-flex align-items-center gap-2 mb-4"
                 style="border-radius:10px;font-size:.88rem;">
                 <i class="bi bi-exclamation-triangle-fill"></i>
-                <div><strong>DB-Fehler:</strong> <?= htmlspecialchars($dbError) ?></div>
+                <strong>DB-Fehler:</strong> <?= htmlspecialchars($dbError) ?>
             </div>
         <?php endif; ?>
 
-        <!-- Stat cards -->
-        <div class="db-stats">
-            <div class="db-stat">
-                <div class="db-stat__icon db-stat__icon--blue"><i class="bi bi-people-fill"></i></div>
+        <!-- KPI -->
+        <div class="db-kpi">
+            <div class="db-kpi-card">
+                <div class="db-kpi__icon db-kpi__icon--blue"><i class="bi bi-people-fill"></i></div>
                 <div>
-                    <div class="db-stat__num"><?= (int) ($userStats['gesamt'] ?? 0) ?></div>
-                    <div class="db-stat__label">Benutzer gesamt</div>
+                    <div class="db-kpi__num"><?= (int) ($userStats['gesamt'] ?? 0) ?></div>
+                    <div class="db-kpi__label">Benutzer</div>
                 </div>
             </div>
-            <div class="db-stat">
-                <div class="db-stat__icon db-stat__icon--red"><i class="bi bi-shield-fill-check"></i></div>
+            <div class="db-kpi-card">
+                <div class="db-kpi__icon db-kpi__icon--red"><i class="bi bi-shield-fill-check"></i></div>
                 <div>
-                    <div class="db-stat__num"><?= (int) ($userStats['admins'] ?? 0) ?></div>
-                    <div class="db-stat__label">Admins</div>
+                    <div class="db-kpi__num"><?= (int) ($userStats['admins'] ?? 0) ?></div>
+                    <div class="db-kpi__label">Admins</div>
                 </div>
             </div>
-            <div class="db-stat">
-                <div class="db-stat__icon db-stat__icon--green"><i class="bi bi-newspaper"></i></div>
+            <div class="db-kpi-card">
+                <div class="db-kpi__icon db-kpi__icon--green"><i class="bi bi-box-seam-fill"></i></div>
                 <div>
-                    <div class="db-stat__num"><?= (int) ($newsStats['gesamt'] ?? 0) ?></div>
-                    <div class="db-stat__label">News gesamt</div>
+                    <div class="db-kpi__num"><?= (int) ($shopStats['artikel_gesamt'] ?? 0) ?></div>
+                    <div class="db-kpi__label">Artikel</div>
                 </div>
             </div>
-            <div class="db-stat">
-                <div class="db-stat__icon db-stat__icon--teal"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="db-kpi-card">
+                <div class="db-kpi__icon db-kpi__icon--amber"><i class="bi bi-newspaper"></i></div>
                 <div>
-                    <div class="db-stat__num"><?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?></div>
-                    <div class="db-stat__label">Veröffentlicht</div>
+                    <div class="db-kpi__num"><?= (int) ($newsStats['gesamt'] ?? 0) ?></div>
+                    <div class="db-kpi__label">News</div>
                 </div>
             </div>
-            <div class="db-stat">
-                <div class="db-stat__icon db-stat__icon--green"><i class="bi bi-box-seam-fill"></i></div>
+            <div class="db-kpi-card">
+                <div class="db-kpi__icon db-kpi__icon--gray"><i class="bi bi-receipt"></i></div>
                 <div>
-                    <div class="db-stat__num"><?= (int) ($shopStats['artikel_gesamt'] ?? 0) ?></div>
-                    <div class="db-stat__label">Artikel im Shop</div>
+                    <div class="db-kpi__num"><?= (int) ($belegeStats['gesamt'] ?? 0) ?></div>
+                    <div class="db-kpi__label">Belege</div>
                 </div>
             </div>
         </div>
 
-        <!-- Webshop-Widget -->
-        <div class="db-card mb-4">
-            <div class="db-card__head">
-                <h2 class="db-card__title">
-                    <i class="bi bi-shop-fill" style="color:var(--db-green);"></i> Webshop-Übersicht
-                </h2>
-                <a href="webshop-admin.php" class="db-badge db-badge--green" style="text-decoration:none;">
-                    <i class="bi bi-pencil-square"></i> Verwalten
-                </a>
-            </div>
-            <?php if (empty($shopArtikel)): ?>
-                <div style="padding:2rem;text-align:center;color:var(--db-ink-3);">
-                    <i class="bi bi-box-seam" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
-                    <p style="font-size:.875rem;">Noch keine Artikel vorhanden.</p>
-                </div>
-            <?php else: ?>
-                <div style="overflow-x:auto;">
-                    <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
-                        <thead>
-                            <tr style="background:#f8fafc;border-bottom:2px solid var(--db-border);">
-                                <th style="padding:.6rem 1rem;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Artikel</th>
-                                <th style="padding:.6rem 1rem;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Kategorie</th>
-                                <th style="padding:.6rem 1rem;text-align:right;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Preis</th>
-                                <th style="padding:.6rem 1rem;text-align:right;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;">Bestand</th>
-                                <th style="padding:.6rem 1rem;text-align:right;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--db-ink-3);font-weight:700;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($shopArtikel as $sa): ?>
-                            <tr style="border-bottom:1px solid var(--db-border);">
-                                <td style="padding:.7rem 1rem;">
-                                    <div style="font-weight:600;"><?= htmlspecialchars($sa['Bezeichnung'] ?? '—') ?></div>
-                                    <div style="font-size:.72rem;color:var(--db-ink-3);"><?= htmlspecialchars($sa['Artikelnummer']) ?></div>
-                                </td>
-                                <td style="padding:.7rem 1rem;">
-                                    <span class="db-badge db-badge--gray"><?= htmlspecialchars($sa['kat'] ?? '—') ?></span>
-                                </td>
-                                <td style="padding:.7rem 1rem;text-align:right;font-weight:700;white-space:nowrap;">
-                                    <?= number_format((float)($sa['Preis'] ?? 0), 2, ',', '.') ?> <?= htmlspecialchars($sa['Waehrung'] ?? 'EUR') ?>
-                                </td>
-                                <td style="padding:.7rem 1rem;text-align:right;">
-                                    <?php $stk = (int)($sa['Stueckzahl'] ?? 0); ?>
-                                    <?php if ($stk >= 999999): ?>
-                                        <span style="color:var(--db-ink-3);font-size:.8rem;">∞</span>
-                                    <?php elseif ($stk === 0): ?>
-                                        <span class="db-badge db-badge--red">0</span>
-                                    <?php else: ?>
-                                        <span class="db-badge db-badge--<?= $stk < 5 ? 'amber' : 'green' ?>"><?= $stk ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="padding:.7rem 1rem;text-align:right;">
-                                    <a href="webshop-admin.php?edit=<?= urlencode($sa['Artikelnummer']) ?>"
-                                       style="font-size:.8rem;color:var(--db-blue);text-decoration:none;font-weight:600;">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="padding:.75rem 1.2rem;border-top:1px solid var(--db-border);text-align:right;">
-                    <a href="webshop-admin.php" style="font-size:.8rem;color:var(--db-green);text-decoration:none;font-weight:700;">
-                        Alle <?= (int)($shopStats['artikel_gesamt'] ?? 0) ?> Artikel ansehen <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-            <?php endif; ?>
+        <!-- Quick Actions -->
+        <div class="db-section-hd">
+            <h2><i class="bi bi-lightning-charge-fill" style="color:var(--am);"></i> Schnellzugriff</h2>
+        </div>
+        <div class="db-actions mb-4">
+            <a href="user-admin.php" class="db-action-btn db-action-btn--users">
+                <div class="db-action-btn__icon db-action-btn__icon--blue"><i class="bi bi-people-fill"></i></div>
+                <div>Userverwaltung</div>
+                <div class="db-action-btn__label"><?= (int) ($userStats['gesamt'] ?? 0) ?> Benutzer</div>
+            </a>
+            <a href="webshop-admin.php" class="db-action-btn db-action-btn--shop">
+                <div class="db-action-btn__icon db-action-btn__icon--green"><i class="bi bi-shop-fill"></i></div>
+                <div>Webshop</div>
+                <div class="db-action-btn__label"><?= (int) ($shopStats['artikel_gesamt'] ?? 0) ?> Artikel</div>
+            </a>
+            <a href="news-manager.php" class="db-action-btn db-action-btn--news">
+                <div class="db-action-btn__icon db-action-btn__icon--amber"><i class="bi bi-newspaper"></i></div>
+                <div>News Manager</div>
+                <div class="db-action-btn__label"><?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?> online</div>
+            </a>
+            <a href="downloads.php" class="db-action-btn db-action-btn--dl">
+                <div class="db-action-btn__icon db-action-btn__icon--red"><i class="bi bi-download"></i></div>
+                <div>Downloads</div>
+                <div class="db-action-btn__label">Kundenbereich</div>
+            </a>
         </div>
 
+        <!-- 3-Spalten -->
         <div class="row g-4">
 
-            <!-- Benutzer-Tabelle -->
-            <div class="col-lg-6">
-                <div class="db-card">
+            <!-- Benutzer -->
+            <div class="col-lg-4">
+                <div class="db-section-hd">
+                    <h2><i class="bi bi-people-fill" style="color:var(--b);"></i> Benutzer</h2>
+                    <a href="user-admin.php" class="db-section-hd__link">Alle verwalten <i
+                            class="bi bi-arrow-right"></i></a>
+                </div>
+                <div class="db-card mb-3">
                     <div class="db-card__head">
-                        <h2 class="db-card__title">
-                            <i class="bi bi-people-fill icon-user"></i> Letzte Benutzer
-                        </h2>
-                        <span style="font-size:.75rem;color:var(--db-ink-3);font-weight:600;">
-                            <?= (int) ($userStats['gesamt'] ?? 0) ?> gesamt
-                        </span>
+                        <h3 class="db-card__title"><i class="bi bi-clock-history" style="color:var(--b);"></i> Letzte
+                            Zugänge</h3>
+                        <span style="font-size:.72rem;color:var(--i3);font-weight:600;"><?= count($recentUsers) ?> von
+                            <?= (int) ($userStats['gesamt'] ?? 0) ?></span>
                     </div>
-
-                    <?php if (empty($users)): ?>
-                        <div class="db-empty"><i class="bi bi-people"></i>
-                            <p>Keine Benutzer gefunden.</p>
-                        </div>
+                    <?php if (empty($recentUsers)): ?>
+                        <div class="db-empty"><i class="bi bi-people"></i>Keine Benutzer.</div>
                     <?php else: ?>
-                        <?php foreach ($users as $u): ?>
+                        <?php foreach ($recentUsers as $u): ?>
                             <div class="db-row db-row--user">
-                                <div class="db-avatar">
+                                <div class="db-avatar <?= strtolower($u['role'] ?? '') === 'admin' ? 'db-avatar--red' : '' ?>">
                                     <?= strtoupper(mb_substr($u['username'] ?: $u['email'], 0, 1)) ?>
                                 </div>
                                 <div style="min-width:0;">
-                                    <div class="db-row__name">
-                                        <?= htmlspecialchars($u['username'] ?: '—') ?>
-                                    </div>
+                                    <div class="db-row__name"><?= htmlspecialchars($u['username'] ?: '—') ?></div>
                                     <div class="db-row__sub"><?= htmlspecialchars($u['email']) ?></div>
                                 </div>
-                                <div style="flex-shrink:0;">
-                                    <?= roleBadge($u['role'] ?? 'Kunde') ?>
-                                </div>
+                                <?= roleBadge($u['role'] ?? 'Kunde') ?>
                             </div>
                         <?php endforeach; ?>
+                        <a href="user-admin.php" class="db-footer-link">Alle <?= (int) ($userStats['gesamt'] ?? 0) ?> Benutzer
+                            <i class="bi bi-arrow-right"></i></a>
                     <?php endif; ?>
                 </div>
-
-                <!-- User-Aufschlüsselung -->
-                <div class="db-card mt-3">
+                <div class="db-card">
                     <div class="db-card__head">
-                        <h2 class="db-card__title"><i class="bi bi-bar-chart-fill icon-user"></i> Rollen-Aufschlüsselung
-                        </h2>
+                        <h3 class="db-card__title"><i class="bi bi-bar-chart-fill" style="color:var(--b);"></i> Rollen
+                        </h3>
                     </div>
-                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
-                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
-                            <i class="bi bi-person-fill" style="color:#64748b;"></i> Kunden
-                        </div>
-                        <div style="display:flex;align-items:center;gap:.6rem;">
-                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($userStats['kunden'] ?? 0) ?>
-                            </div>
-                            <span class="db-badge db-badge--gray">Kunde</span>
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-shield-fill-check" style="color:var(--r);"></i>
+                            Admins</div>
+                        <div style="display:flex;align-items:center;gap:.5rem;">
+                            <div class="db-breakdown__val"><?= (int) ($userStats['admins'] ?? 0) ?></div><span
+                                class="db-badge db-badge--red">Admin</span>
                         </div>
                     </div>
-                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
-                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
-                            <i class="bi bi-person-badge-fill" style="color:var(--db-blue);"></i> Mitarbeiter
-                        </div>
-                        <div style="display:flex;align-items:center;gap:.6rem;">
-                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($userStats['mitarbeiter'] ?? 0) ?>
-                            </div>
-                            <span class="db-badge db-badge--blue">employee</span>
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-person-badge-fill" style="color:var(--b);"></i>
+                            Mitarbeiter</div>
+                        <div style="display:flex;align-items:center;gap:.5rem;">
+                            <div class="db-breakdown__val"><?= (int) ($userStats['mitarbeiter'] ?? 0) ?></div><span
+                                class="db-badge db-badge--blue">MA</span>
                         </div>
                     </div>
-                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
-                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
-                            <i class="bi bi-shield-fill-check" style="color:#dc2626;"></i> Admins
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-person-fill" style="color:#64748b;"></i> Kunden
                         </div>
-                        <div style="display:flex;align-items:center;gap:.6rem;">
-                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($userStats['admins'] ?? 0) ?>
-                            </div>
-                            <span class="db-badge db-badge--red">admin</span>
+                        <div style="display:flex;align-items:center;gap:.5rem;">
+                            <div class="db-breakdown__val"><?= (int) ($userStats['kunden'] ?? 0) ?></div><span
+                                class="db-badge db-badge--gray">Kunde</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- News-Tabelle -->
-            <div class="col-lg-6">
+            <!-- Webshop -->
+            <div class="col-lg-4">
+                <div class="db-section-hd">
+                    <h2><i class="bi bi-shop-fill" style="color:var(--g);"></i> Webshop</h2>
+                    <a href="webshop-admin.php" class="db-section-hd__link">Verwalten <i
+                            class="bi bi-arrow-right"></i></a>
+                </div>
+                <div class="db-card mb-3">
+                    <div class="db-card__head">
+                        <h3 class="db-card__title"><i class="bi bi-box-seam-fill" style="color:var(--g);"></i> Artikel
+                        </h3>
+                        <span
+                            style="font-size:.72rem;color:var(--i3);font-weight:600;"><?= (int) ($shopStats['artikel_gesamt'] ?? 0) ?>
+                            gesamt</span>
+                    </div>
+                    <?php if (empty($shopArtikel)): ?>
+                        <div class="db-empty"><i class="bi bi-box-seam"></i>Keine Artikel.</div>
+                    <?php else: ?>
+                        <?php foreach ($shopArtikel as $a):
+                            $stk = (int) ($a['Stueckzahl'] ?? 0); ?>
+                            <div class="db-row" style="grid-template-columns:1fr auto;">
+                                <div style="min-width:0;">
+                                    <div class="db-row__name"><?= htmlspecialchars($a['Bezeichnung'] ?? '—') ?></div>
+                                    <div class="db-row__sub"><?= htmlspecialchars($a['kat'] ?? '—') ?> ·
+                                        <?= number_format((float) ($a['Preis'] ?? 0), 2, ',', '.') ?>
+                                        <?= htmlspecialchars($a['Waehrung'] ?? 'EUR') ?></div>
+                                </div>
+                                <?php if ($stk >= 999999): ?><span class="db-badge db-badge--green">∞</span>
+                                <?php elseif ($stk === 0): ?><span class="db-badge db-badge--red">0</span>
+                                <?php else: ?><span class="db-badge db-badge--<?= $stk < 5 ? 'amber' : 'green' ?>"><?= $stk ?></span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                        <a href="webshop-admin.php" class="db-footer-link">Alle
+                            <?= (int) ($shopStats['artikel_gesamt'] ?? 0) ?> Artikel <i class="bi bi-arrow-right"></i></a>
+                    <?php endif; ?>
+                </div>
                 <div class="db-card">
                     <div class="db-card__head">
-                        <h2 class="db-card__title">
-                            <i class="bi bi-newspaper icon-news"></i> News-Beiträge
-                        </h2>
-                        <span style="font-size:.75rem;color:var(--db-ink-3);font-weight:600;">
-                            <?= (int) ($newsStats['gesamt'] ?? 0) ?> gesamt
-                        </span>
+                        <h3 class="db-card__title"><i class="bi bi-bar-chart-fill" style="color:var(--g);"></i>
+                            Überblick</h3>
                     </div>
-
-                    <?php if (empty($newsList)): ?>
-                        <div class="db-empty"><i class="bi bi-newspaper"></i>
-                            <p>Keine News-Beiträge vorhanden.</p>
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-tags" style="color:var(--am);"></i> Kategorien
                         </div>
+                        <div class="db-breakdown__val"><?= (int) ($shopStats['kategorien'] ?? 0) ?></div>
+                    </div>
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-receipt" style="color:var(--b);"></i> Belege
+                        </div>
+                        <div class="db-breakdown__val"><?= (int) ($belegeStats['gesamt'] ?? 0) ?></div>
+                    </div>
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-currency-euro" style="color:#16a34a;"></i>
+                            Umsatz</div>
+                        <div class="db-breakdown__val" style="color:#16a34a;">
+                            <?= number_format((float) ($belegeStats['umsatz'] ?? 0), 2, ',', '.') ?> €</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- News -->
+            <div class="col-lg-4">
+                <div class="db-section-hd">
+                    <h2><i class="bi bi-newspaper" style="color:var(--am);"></i> News</h2>
+                    <a href="news-manager.php" class="db-section-hd__link">Verwalten <i
+                            class="bi bi-arrow-right"></i></a>
+                </div>
+                <div class="db-card mb-3">
+                    <div class="db-card__head">
+                        <h3 class="db-card__title"><i class="bi bi-clock-history" style="color:var(--am);"></i> Letzte
+                            Beiträge</h3>
+                        <span
+                            style="font-size:.72rem;color:var(--i3);font-weight:600;"><?= (int) ($newsStats['gesamt'] ?? 0) ?>
+                            gesamt</span>
+                    </div>
+                    <?php if (empty($newsList)): ?>
+                        <div class="db-empty"><i class="bi bi-newspaper"></i>Keine Beiträge.</div>
                     <?php else: ?>
-                        <?php foreach ($newsList as $n): ?>
-                            <?php
-                            $published = $n['status'] === 'published';
-                            $dateStr = !empty($n['published_at'])
-                                ? date('d.m.Y', strtotime($n['published_at']))
-                                : date('d.m.Y', strtotime($n['created_at']));
+                        <?php foreach ($newsList as $n):
+                            $pub = $n['status'] === 'published';
+                            $d = !empty($n['published_at']) ? date('d.m.Y', strtotime($n['published_at'])) : date('d.m.Y', strtotime($n['created_at']));
                             ?>
                             <div class="db-row db-row--news">
                                 <div style="min-width:0;">
-                                    <div class="db-row__news-title"><?= htmlspecialchars($n['title']) ?></div>
-                                    <?php if (!empty($n['excerpt'])): ?>
-                                        <div class="db-row__news-excerpt"><?= htmlspecialchars($n['excerpt']) ?></div>
-                                    <?php endif; ?>
-                                    <div style="font-size:.72rem;color:var(--db-ink-3);margin-top:.25rem;">
-                                        <i class="bi bi-calendar3"></i> <?= $dateStr ?>
-                                    </div>
+                                    <div class="db-row__name"><?= htmlspecialchars($n['title']) ?></div>
+                                    <div class="db-row__sub"><i class="bi bi-calendar3"></i> <?= $d ?> ·
+                                        <?= $n['type'] === 'internal' ? 'Intern' : 'Öffentlich' ?></div>
                                 </div>
-                                <div style="flex-shrink:0;">
-                                    <?php if ($published): ?>
-                                        <span class="db-badge db-badge--green">Online</span>
-                                    <?php else: ?>
-                                        <span class="db-badge db-badge--amber">Entwurf</span>
-                                    <?php endif; ?>
-                                </div>
+                                <span
+                                    class="db-badge db-badge--<?= $pub ? 'green' : 'amber' ?>"><?= $pub ? 'Online' : 'Entwurf' ?></span>
                             </div>
                         <?php endforeach; ?>
+                        <a href="news-manager.php" class="db-footer-link">Alle <?= (int) ($newsStats['gesamt'] ?? 0) ?>
+                            Beiträge <i class="bi bi-arrow-right"></i></a>
                     <?php endif; ?>
                 </div>
-                <a href="news-manager.php" class="db-badge db-badge--green" style="text-decoration:none;">
-                    <i class="bi bi-pencil-square"></i> Verwalten
-                </a>
-
-                <!-- News-Aufschlüsselung -->
-                <div class="db-card mt-3">
+                <div class="db-card">
                     <div class="db-card__head">
-                        <h2 class="db-card__title"><i class="bi bi-bar-chart-fill icon-news"></i> News-Status</h2>
+                        <h3 class="db-card__title"><i class="bi bi-bar-chart-fill" style="color:var(--am);"></i> Status
+                        </h3>
                     </div>
-                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
-                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
-                            <i class="bi bi-check-circle-fill" style="color:#16a34a;"></i> Veröffentlicht
-                        </div>
-                        <div style="display:flex;align-items:center;gap:.6rem;">
-                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?>
-                            </div>
-                            <span class="db-badge db-badge--green">Online</span>
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>
+                            Veröffentlicht</div>
+                        <div style="display:flex;align-items:center;gap:.5rem;">
+                            <div class="db-breakdown__val"><?= (int) ($newsStats['veroeffentlicht'] ?? 0) ?></div><span
+                                class="db-badge db-badge--green">Online</span>
                         </div>
                     </div>
-                    <div class="db-row" style="grid-template-columns:1fr auto;padding:.9rem 1.35rem;">
-                        <div style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;font-weight:600;">
-                            <i class="bi bi-pencil-fill" style="color:#d97706;"></i> Entwürfe
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-pencil-fill" style="color:var(--am);"></i>
+                            Entwürfe</div>
+                        <div style="display:flex;align-items:center;gap:.5rem;">
+                            <div class="db-breakdown__val"><?= (int) ($newsStats['entwurf'] ?? 0) ?></div><span
+                                class="db-badge db-badge--amber">Entwurf</span>
                         </div>
-                        <div style="display:flex;align-items:center;gap:.6rem;">
-                            <div style="font-size:1.1rem;font-weight:700;color:var(--db-ink);">
-                                <?= (int) ($newsStats['entwurf'] ?? 0) ?>
-                            </div>
-                            <span class="db-badge db-badge--amber">Entwurf</span>
+                    </div>
+                    <div class="db-breakdown">
+                        <div class="db-breakdown__label"><i class="bi bi-stack" style="color:var(--i3);"></i> Gesamt
                         </div>
+                        <div class="db-breakdown__val"><?= (int) ($newsStats['gesamt'] ?? 0) ?></div>
                     </div>
                 </div>
             </div>
@@ -796,7 +903,6 @@ function roleBadge(string $role): string
             </p>
         </div>
     </footer>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

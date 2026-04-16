@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $appRoot = dirname(__DIR__);
 require $appRoot . '/app/auth/bootstrap.php';
-require $appRoot . '/app/auth/require_login.php';
+#require $appRoot . '/app/auth/require_login.php';
 require $appRoot . '/app/db.php';
 
 /* ── News aus DB laden ─────────────────────────────────── */

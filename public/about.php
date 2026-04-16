@@ -431,19 +431,19 @@ require __DIR__ . '/../app/auth/bootstrap.php';
                 </div>
                 <div class="team-grid">
                     <div class="team-card reveal" style="transition-delay:0ms;">
-                        <div class="team-card__avatar">M</div>
+                        <div class="team-card__avatar">S</div>
                         <h3>Sebastian Hauss</h3>
                         <div class="team-card__role">Gründer & CEO</div>
                         <p>Softwareentwickler mit über 10 Jahren Erfahrung in SaaS-Produkten. Hat BookIT 2026 gegründet.</p>
                     </div>
                     <div class="team-card reveal" style="transition-delay:80ms;">
-                        <div class="team-card__avatar" style="background: linear-gradient(135deg, var(--blue), #6baaba);">S</div>
+                        <div class="team-card__avatar" style="background: linear-gradient(135deg, var(--blue), #6baaba);">O</div>
                         <h3>Oliver Mauß</h3>
                         <div class="team-card__role">Lead Developer</div>
                         <p>Verantwortlich für das gesamte Backend und die API-Architektur.</p>
                     </div>
                     <div class="team-card reveal" style="transition-delay:160ms;">
-                        <div class="team-card__avatar" style="background: linear-gradient(135deg, #555, #888);">T</div>
+                        <div class="team-card__avatar" style="background: linear-gradient(135deg, #555, #888);">B</div>
                         <h3>Boban Milosevic</h3>
                         <div class="team-card__role">UX & Design</div>
                         <p>Gestaltet die Oberflächen von BookIT. </p>
