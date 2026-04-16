@@ -31,7 +31,7 @@ $displayName = $userName !== '' ? $userName : $userEmail;
               <i class="bi bi-newspaper me-2"></i>Öffentliche News
             </a>
           </li>
-          <?php if (isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', 'employee'])): ?>
+          <?php if (isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', 'mitarbeiter'])): ?>
             <li>
               <a class="dropdown-item" href="/internal-news.php">
                 <i class="bi bi-lock-fill me-2"></i>Interne News

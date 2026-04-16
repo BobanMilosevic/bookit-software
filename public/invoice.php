@@ -11,7 +11,7 @@ require __DIR__ . '/../vendor/autoload.php';
 $mailConfig = require __DIR__ . '/../config/mail.php';
 
 // ======== 1. Kunde & letzte Rechnung laden ========
-$kundennummer = 1; // Testkunde
+$kundennummer = 1; 
 $pdo = db();
 
 // JOIN über die sauberen Tabellen- und Spaltennamen

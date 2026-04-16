@@ -38,8 +38,8 @@ $stmt = $pdo->prepare("
                 FROM users_has_Rollen uhr
                 INNER JOIN Rollen r ON r.idRollen = uhr.Rollen_idRollen
                 WHERE uhr.users_idusers = u.idusers
-                  AND r.Rollenname = 'employee'
-            ) THEN 'employee'
+                  AND r.Rollenname = 'mitarbeiter'
+            ) THEN 'mitarbeiter'
             ELSE 'customer'
         END AS role
     FROM users u
